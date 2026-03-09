@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PromptIT</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 420px;
+      min-height: 500px;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    /* Animated background orbs */
+    .bg-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.1;
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    .orb-1 {
+      width: 200px;
+      height: 200px;
+      background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+      top: -50px;
+      left: -50px;
+      animation: float 15s ease-in-out infinite;
+    }
+    
+    .orb-2 {
+      width: 180px;
+      height: 180px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      bottom: -40px;
+      right: -40px;
+      animation: float 18s ease-in-out infinite reverse;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(20px, -20px) scale(1.1); }
+    }
+    
+    .container {
+      position: relative;
+      z-index: 1;
+      padding: 20px;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+      padding-top: 8px;
+    }
+    
+    .logo-container {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    
+    .sparkles-wrapper {
+      position: relative;
+    }
+    
+    .sparkles-glow {
+      position: absolute;
+      inset: 0;
+      background: white;
+      filter: blur(16px);
+      opacity: 0.3;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.5; }
+    }
+    
+    .sparkles {
+      width: 28px;
+      height: 28px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .logo {
+      font-size: 32px;
+      font-weight: 400;
+      letter-spacing: -0.5px;
+      display: inline-flex;
+      align-items: center;
+      position: relative;
+      min-width: 155px;
+    }
+    
+    .logo-p, .logo-it {
+      background: linear-gradient(to right, #fff, #cbd5e1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 700;
+    }
+    
+    .logo-rompt {
+      background: linear-gradient(to right, #fff, #cbd5e1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-family: 'Courier New', monospace;
+      font-weight: 300;
+      overflow: hidden;
+      display: inline-block;
+      width: 100px;
+      max-width: 100px;
+      opacity: 1;
+      transition: width 0.6s ease-out, opacity 0.6s ease-out;
+      white-space: nowrap;
+    }
+    
+    .logo-rompt.initial {
+      width: 0;
+      max-width: 0;
+      opacity: 0;
+      animation: expandLogo 0.6s ease-out 0.3s forwards;
+    }
+    
+    @keyframes expandLogo {
+      to {
+        width: 100px;
+        max-width: 100px;
+        opacity: 1;
+      }
+    }
+    
+    .logo-rompt.collapse {
+      width: 0;
+      max-width: 0;
+      opacity: 0;
+      transition: width 0.5s ease-in, opacity 0.5s ease-in;
+    }
+    
+    .tagline {
+      font-size: 11px;
+      color: #94a3b8;
+      letter-spacing: 0.5px;
+    }
+    
+    .glass-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 12px;
+      transition: all 0.3s;
+    }
+    
+    .glass-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+    
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: #fff;
+      resize: vertical;
+      font-family: inherit;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    
+    textarea::placeholder {
+      color: #64748b;
+    }
+    
+    textarea:focus {
+      outline: none;
+    }
+    
+    .hint-text {
+      font-size: 10px;
+      color: #64748b;
+      margin-top: 8px;
+    }
+    
+    .dropdown-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    
+    .dropdown-wrapper {
+      flex: 1;
+      position: relative;
+    }
+    
+    select {
+      width: 100%;
+      padding: 6px 28px 6px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      color: #94a3b8;
+      font-size: 11px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+    }
+    
+    select:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+    
+    select:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    select option {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 8px;
+    }
+    
+    .dropdown-wrapper::after {
+      content: '';
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 5px solid #94a3b8;
+      pointer-events: none;
+    }
+    
+    select.inline-select {
+      background: transparent;
+      border: none;
+      padding: 0 16px 0 0;
+      font-size: 10px;
+      color: #64748b;
+    }
+    
+    select.inline-select:hover {
+      color: #94a3b8;
+      background: transparent;
+    }
+    
+    select.inline-select:focus {
+      background: transparent;
+      border: none;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    
+    button {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 13px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .enhance-btn {
+      background-color: #fff;
+      color: #000;
+    }
+    
+    .enhance-btn:hover:not(:disabled) {
+      background-color: #f1f5f9;
+      transform: translateY(-1px);
+    }
+    
+    .copy-btn {
+      background-color: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+    
+    .copy-btn:hover:not(:disabled) {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    .result-card {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 12px;
+      color: #cbd5e1;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .result-header svg {
+      width: 14px;
+      height: 14px;
+    }
+    
+    .result {
+      min-height: 100px;
+      max-height: 240px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #fff;
+    }
+    
+    .result::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .result::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 3px;
+    }
+    
+    .result::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+    
+    .result::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    
+    .hidden {
+      display: none !important;
+    }
+    
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 32px;
+    }
+    
+    .spinner-wrapper {
+      position: relative;
+      width: 48px;
+      height: 48px;
+    }
+    
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 2px solid rgba(139, 92, 246, 0.2);
+      border-top: 2px solid #8b5cf6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    .spinner-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 20px;
+      height: 20px;
+      opacity: 0.6;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .loading-text {
+      color: #94a3b8;
+      font-size: 13px;
+    }
+    
+    .notification {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 100;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    
+    .notification.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    
+    .icon {
+      width: 16px;
+      height: 16px;
+      stroke-width: 2;
+    }
+
+    /* Settings button */
+    .settings-btn {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 100;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-center;
+    }
+
+    .settings-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .settings-btn svg {
+      width: 16px;
+      height: 16px;
+      color: #94a3b8;
+      transition: all 0.3s;
+    }
+
+    .settings-btn:hover svg {
+      color: #fff;
+      transform: rotate(90deg);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: rgba(24, 24, 27, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 20px;
+      width: 100%;
+      max-width: 380px;
+      max-height: 85vh;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-title-icon {
+      padding: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+    }
+
+    .modal-close {
+      padding: 6px;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 20px;
+    }
+
+    .tab {
+      padding: 8px 16px;
+      font-size: 12px;
+      color: #94a3b8;
+      background: none;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      transition: color 0.2s;
+    }
+
+    .tab:hover {
+      color: #cbd5e1;
+    }
+
+    .tab.active {
+      color: #fff;
+    }
+
+    .tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #fff;
+    }
+
+    .tab-content {
+      display: none;
+      max-height: calc(85vh - 140px);
+      overflow-y: auto;
+      padding-right: 8px;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .tab-content::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .tab-content::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 2px;
+    }
+
+    .tab-content::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+    }
+
+    /* Settings sections */
+    .settings-section {
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      color: #cbd5e1;
+      margin-bottom: 12px;
+    }
+
+    .settings-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .setting-item {
+      padding: 12px 0;
+    }
+
+    .setting-item:not(:last-child) {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .setting-item:first-child {
+      padding-top: 0;
+    }
+
+    .setting-label {
+      font-size: 12px;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .setting-desc {
+      font-size: 10px;
+      color: #94a3b8;
+    }
+
+    input[type="password"] {
+      width: 100%;
+      padding: 8px 12px;
+      margin-top: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 11px;
+      font-family: inherit;
+    }
+
+    input[type="password"]:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    input[type="password"]::placeholder {
+      color: #64748b;
+    }
+
+    .save-btn {
+      width: 100%;
+      margin-top: 12px;
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .save-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* About section */
+    .about-logo {
+      text-align: center;
+      padding: 24px 0;
+    }
+
+    .about-logo-icon {
+      display: inline-block;
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .about-logo-glow {
+      position: absolute;
+      inset: 0;
+      background: white;
+      filter: blur(20px);
+      opacity: 0.2;
+    }
+
+    .about-logo svg {
+      position: relative;
+      z-index: 1;
+      width: 40px;
+      height: 40px;
+    }
+
+    .about-title {
+      font-size: 20px;
+      margin-bottom: 6px;
+    }
+
+    .about-version {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .about-desc {
+      font-size: 10px;
+      color: #94a3b8;
+      line-height: 1.6;
+    }
+
+    .about-developer {
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.1));
+      border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+
+    .developer-avatar {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .developer-info {
+      flex: 1;
+    }
+
+    .developer-name {
+      font-size: 12px;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .feature-list {
+      list-style: none;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 10px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+
+    .feature-item svg {
+      width: 14px;
+      height: 14px;
+      color: #a78bfa;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .about-footer {
+      text-align: center;
+      font-size: 10px;
+      color: #64748b;
+      padding-top: 16px;
+      margin-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* History modal */
+    .history-item {
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .history-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .history-text {
+      font-size: 11px;
+      color: #fff;
+      margin-bottom: 6px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .history-meta {
+      font-size: 9px;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #64748b;
+    }
+
+    .empty-state svg {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 12px;
+      opacity: 0.3;
+    }
+
+    .empty-state p {
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Background orbs -->
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+  
+  <div class="container">
+    <div class="header">
+      <div class="logo-container">
+        <div class="sparkles-wrapper">
+          <div class="sparkles-glow"></div>
+          <svg class="sparkles" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 3v4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M22 5h-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 17v2" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M5 18H3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="logo">
+          <span class="logo-p">P</span>
+          <span class="logo-rompt initial">rompt</span>
+          <span class="logo-it">IT</span>
+        </div>
+      </div>
+      <p class="tagline">Transform your prompts into powerful requests</p>
+    </div>
+    
+    <div class="glass-card">
+      <textarea id="inputPrompt" placeholder="Enter your prompt here..."></textarea>
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <!-- Role Dropdown -->
+          <div class="dropdown-wrapper" style="position: relative; display: inline-flex; align-items: center; font-size: 10px; color: #64748b; cursor: pointer;">
+            <!-- Visible text -->
+            <span id="roleLabel" style="padding-right: 10px; pointer-events: none;">Role</span>
+            
+            <!-- Arrow icon -->
+            <svg style="position: absolute; right: 0; pointer-events: none; color: #64748b;" width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            
+            <!-- Invisible native select -->
+            <select id="roleSelect" style="position: absolute; inset: 0; opacity: 0; cursor: pointer;">
+              <option value="">Role</option>
+              <option value="software-developer">Software Developer</option>
+              <option value="data-scientist">Data Scientist</option>
+              <option value="teacher">Teacher</option>
+              <option value="artist">Artist</option>
+              <option value="writer">Writer</option>
+              <option value="marketer">Marketer</option>
+              <option value="business-analyst">Business Analyst</option>
+              <option value="designer">Designer</option>
+              <option value="researcher">Researcher</option>
+            </select>
+          </div>
+          
+          <!-- Mood Dropdown -->
+          <div class="dropdown-wrapper" style="position: relative; display: inline-flex; align-items: center; font-size: 10px; color: #64748b; cursor: pointer;">
+            <!-- Visible text -->
+            <span id="moodLabel" style="padding-right: 10px; pointer-events: none;">Mood</span>
+            
+            <!-- Arrow icon -->
+            <svg style="position: absolute; right: 0; pointer-events: none; color: #64748b;" width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            
+            <!-- Invisible native select -->
+            <select id="moodSelect" style="position: absolute; inset: 0; opacity: 0; cursor: pointer;">
+              <option value="">Mood</option>
+              <option value="detailed">Detailed</option>
+              <option value="concise">Concise</option>
+              <option value="professional">Professional</option>
+              <option value="casual">Casual</option>
+              <option value="creative">Creative</option>
+              <option value="technical">Technical</option>
+              <option value="formal">Formal</option>
+              <option value="friendly">Friendly</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="initialButtons" class="button-group">
+      <button id="enhanceBtn" class="enhance-btn">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M15 4V2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M15 16v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 9h2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M20 9h2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M17.8 11.8 19 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M15 9h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M17.8 6.2 19 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="m3 21 9-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M12.2 6.2 11 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Enhance Prompt
+      </button>
+    </div>
+    
+    <div id="resultButtons" class="button-group hidden">
+      <button id="newBtn" class="enhance-btn">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M15 4V2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M15 16v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 9h2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M20 9h2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M17.8 11.8 19 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M15 9h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M17.8 6.2 19 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="m3 21 9-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M12.2 6.2 11 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Enhance Another
+      </button>
+      <button id="copyBtn" class="copy-btn">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 4H6C4.89543 4 4 4.89543 4 6V18C4 19.1046 4.89543 20 6 20H16C17.1046 20 18 19.1046 18 18V16M8 4H14M8 4V8M14 4C14 5.10457 14.8954 6 16 6H18C19.1046 6 20 6.89543 20 8V14M14 4V8M20 14H16C14.8954 14 14 13.1046 14 12V8M14 8H8" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Copy
+      </button>
+    </div>
+    
+    <div id="loading" class="loading hidden">
+      <div class="spinner-wrapper">
+        <div class="spinner"></div>
+        <svg class="spinner-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M20 3v4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M22 5h-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M4 17v2" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M5 18H3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="loading-text">Enhancing your prompt...</span>
+    </div>
+    
+    <div id="resultContainer" class="hidden">
+      <div class="result-card">
+        <div class="result-header">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M22 5h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Enhanced Prompt
+        </div>
+        <div id="result" class="result"></div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="notification" class="notification">Copied to clipboard!</div>
+  
+  <!-- Hamburger menu button -->
+  <button class="settings-btn" id="menuBtn" style="left: 12px; right: auto;">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 12h18M3 6h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </button>
+  
+  <!-- Settings button -->
+  <button class="settings-btn" id="settingsBtn">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+      <path d="M12 1v6m0 6v6M1 12h6m6 0h6" stroke="currentColor" stroke-width="2"/>
+      <path d="m4 4 4 4m8 0 4 4M4 20l4-4m8 0 4 4" stroke="currentColor" stroke-width="2"/>
+    </svg>
+  </button>
+
+  <!-- Settings/About Modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">
+          <div class="modal-title-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="3" stroke="#94a3b8" stroke-width="2"/>
+              <path d="M12 1v6m0 6v6M1 12h6m6 0h6" stroke="#94a3b8" stroke-width="2"/>
+              <path d="m4 4 4 4m8 0 4 4M4 20l4-4m8 0 4 4" stroke="#94a3b8" stroke-width="2"/>
+            </svg>
+          </div>
+          <h3>Settings & About</h3>
+        </div>
+        <button class="modal-close" id="closeModal">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="settings">Settings</button>
+        <button class="tab" data-tab="about">About</button>
+      </div>
+
+      <!-- Settings Tab -->
+      <div class="tab-content active" id="settingsTab">
+        <div class="settings-section">
+          <h4 class="section-title">API Configuration</h4>
+          <div class="settings-card">
+            <label class="setting-label">OpenAI API Key</label>
+            <p class="setting-desc">Enter your OpenAI API key to use real AI enhancement. Currently using mock responses.</p>
+            <input type="password" id="apiKeyInput" placeholder="sk-...">
+            <button class="save-btn" id="saveApiKey">Save API Key</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h4 class="section-title">General Settings</h4>
+          <div class="settings-card">
+            <div class="setting-item">
+              <p class="setting-label">Auto-copy enhanced prompt</p>
+              <p class="setting-desc">Automatically copy the result to clipboard</p>
+            </div>
+            <div class="setting-item">
+              <p class="setting-label">Save history locally</p>
+              <p class="setting-desc">Store prompt history in browser storage</p>
+            </div>
+            <div class="setting-item">
+              <p class="setting-label">Keyboard shortcuts</p>
+              <p class="setting-desc">Cmd/Ctrl + Enter to enhance</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- About Tab -->
+      <div class="tab-content" id="aboutTab">
+        <div class="about-logo">
+          <div class="about-logo-icon">
+            <div class="about-logo-glow"></div>
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M20 3v4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M22 5h-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M4 17v2" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M5 18H3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3 class="about-title">
+            <span style="background: linear-gradient(to right, #fff, #cbd5e1); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">P</span><span style="background: linear-gradient(to right, #fff, #cbd5e1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-family: 'Courier New', monospace; font-weight: 300;">rompt</span><span style="background: linear-gradient(to right, #fff, #cbd5e1); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">IT</span>
+          </h3>
+          <p class="about-version">Version 1.0.0</p>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-card">
+            <h4 class="setting-label">About PromptIT</h4>
+            <p class="about-desc">PromptIT is a powerful prompt enhancement tool designed to help you craft better, more effective prompts for AI language models. Transform simple ideas into detailed, contextual requests with just one click.</p>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-card about-developer">
+            <h4 class="setting-label" style="margin-bottom: 12px;">Developed By</h4>
+            <div style="display: flex; align-items: flex-start; gap: 12px;">
+              <div class="developer-avatar">👨‍💻</div>
+              <div class="developer-info">
+                <p class="developer-name">Mohd Sadique Ali</p>
+                <p class="about-desc">Full-stack developer passionate about AI and creating tools that enhance productivity and creativity.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-card">
+            <h4 class="setting-label" style="margin-bottom: 12px;">Key Features</h4>
+            <ul class="feature-list">
+              <li class="feature-item">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M20 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M22 5h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Intelligent prompt enhancement with role and mood customization</span>
+              </li>
+              <li class="feature-item">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M20 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M22 5h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Beautiful glassmorphic UI with dark mode design</span>
+              </li>
+              <li class="feature-item">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M20 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M22 5h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>One-click copy to clipboard for seamless workflow</span>
+              </li>
+              <li class="feature-item">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M20 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M22 5h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Modern animations and smooth transitions</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="about-footer">
+          <p>© 2026 PromptIT. All rights reserved.</p>
+          <p style="margin-top: 4px;">Made with ❤️ for the AI community</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
