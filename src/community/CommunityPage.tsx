@@ -27,6 +27,7 @@ interface CommunityPageProps {
   onBack?: () => void;
   onOpenProfile?: () => void;
   userEmail?: string | null;
+  userName?: string | null;
   templates?: SavedTemplate[];
 }
 
@@ -46,6 +47,10 @@ interface PostRow {
 }
 
 interface CommentCountRow {
+  post_id: string;
+}
+
+interface SavedPostRow {
   post_id: string;
 }
 
@@ -80,6 +85,7 @@ export function CommunityPage({
   onBack,
   onOpenProfile,
   userEmail = null,
+  userName = null,
   templates = [],
 }: CommunityPageProps) {
   const [activeTab, setActiveTab] = useState<'community' | 'my-templates'>('community');
@@ -106,6 +112,12 @@ export function CommunityPage({
   );
 
   const loadPosts = async () => {
+    const { data: auth } = await supabase.auth.getUser();
+    const authUserId = auth.user?.id || null;
+    if (authUserId && authUserId !== currentUserId) {
+      setCurrentUserId(authUserId);
+    }
+
     const { data: postRows, error: postsError } = await supabase
       .from('community_posts')
       .select('*')
@@ -120,6 +132,20 @@ export function CommunityPage({
     const { data: commentRows } = await supabase
       .from('community_comments')
       .select('post_id');
+
+    let savedPostIds = new Set<string>();
+    if (authUserId) {
+      const { data: savedRows, error: savedError } = await supabase
+        .from('community_saved_posts')
+        .select('post_id')
+        .eq('user_id', authUserId);
+
+      if (savedError) {
+        console.error('Error loading saved posts:', savedError);
+      } else {
+        savedPostIds = new Set(((savedRows || []) as SavedPostRow[]).map((row) => row.post_id));
+      }
+    }
 
     const counts = new Map<string, number>();
     (commentRows as CommentCountRow[] | null)?.forEach((row) => {
@@ -139,7 +165,7 @@ export function CommunityPage({
       upvotes: row.upvotes || 0,
       downvotes: row.downvotes || 0,
       comments: counts.get(row.id) || 0,
-      bookmarked: Boolean(row.bookmarked),
+      bookmarked: savedPostIds.has(row.id),
       category: row.category || 'other',
     }));
 
@@ -241,18 +267,54 @@ export function CommunityPage({
   };
 
   const handleBookmark = (postId: string) => {
+    if (!currentUserId) {
+      toast.error('Please sign in to save posts');
+      return;
+    }
     const post = posts.find((p) => p.id === postId);
     if (!post) return;
     const next = !post.bookmarked;
     setPosts(posts.map((p) => (p.id === postId ? { ...p, bookmarked: next } : p)));
-    updatePostField(postId, 'bookmarked', next);
+
+    const run = async () => {
+      if (next) {
+        const { error } = await supabase.from('community_saved_posts').insert({
+          user_id: currentUserId,
+          post_id: postId,
+        });
+        if (error) {
+          console.error('Save post error:', error);
+          setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, bookmarked: false } : p)));
+          toast.error('Failed to save post');
+          return;
+        }
+      } else {
+        const { error } = await supabase
+          .from('community_saved_posts')
+          .delete()
+          .eq('user_id', currentUserId)
+          .eq('post_id', postId);
+        if (error) {
+          console.error('Unsave post error:', error);
+          setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, bookmarked: true } : p)));
+          toast.error('Failed to unsave post');
+          return;
+        }
+      }
+    };
+    run();
   };
 
   const handleNewPost = async (payload: TemplatePostPayload) => {
     const template = normalizedTemplates.find((t) => t.id === payload.templateId);
     const { data: auth } = await supabase.auth.getUser();
-    const email = userEmail || auth.user?.email || 'Anonymous';
-    const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`;
+    const resolvedName =
+      userName ||
+      (auth.user?.user_metadata?.display_name as string | undefined) ||
+      userEmail ||
+      auth.user?.email ||
+      'Anonymous';
+    const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(resolvedName)}`;
 
     const promptText = template?.prompt || payload.caption || '';
     const body = payload.caption
@@ -263,7 +325,7 @@ export function CommunityPage({
       .from('community_posts')
       .insert({
         user_id: auth.user?.id || null,
-        author: email,
+        author: resolvedName,
         author_avatar: avatar,
         title: payload.title,
         description: body,
@@ -423,6 +485,7 @@ export function CommunityPage({
         <PostDetailModal
           post={selectedPost}
           userEmail={userEmail}
+          userName={userName}
           onCommentsChanged={handleCommentsChanged}
           onClose={() => setSelectedPost(null)}
         />

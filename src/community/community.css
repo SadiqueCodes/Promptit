@@ -2,7 +2,7 @@
   position: relative;
   min-height: 100vh;
   color: #fff;
-  background: linear-gradient(180deg, #03040a 0%, #070a14 55%, #0a0d18 100%);
+  background: #000;
   overflow: hidden;
 }
 
@@ -15,11 +15,19 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.035;
+  opacity: 0.022;
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
   background-size: 56px 56px;
+}
+
+.pit-community-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 42%, rgba(88, 28, 135, 0.08) 0%, rgba(0, 0, 0, 0) 60%);
 }
 
 .pit-bg-orb {
@@ -34,7 +42,7 @@
   height: 620px;
   left: -120px;
   top: 170px;
-  background: radial-gradient(circle, rgba(118, 102, 235, 0.2) 0%, rgba(118, 102, 235, 0) 72%);
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.08) 0%, rgba(168, 85, 247, 0) 72%);
 }
 
 .pit-bg-orb-b {
@@ -42,7 +50,7 @@
   height: 760px;
   right: -150px;
   top: 310px;
-  background: radial-gradient(circle, rgba(79, 103, 210, 0.18) 0%, rgba(79, 103, 210, 0) 72%);
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.07) 0%, rgba(59, 130, 246, 0) 72%);
 }
 
 .pit-community-shell {
@@ -95,9 +103,9 @@
   gap: 6px;
   border-radius: 999px;
   padding: 6px 12px;
-  color: #c6cff6;
-  border: 1px solid rgba(110, 123, 255, 0.3);
-  background: linear-gradient(135deg, rgba(110, 123, 255, 0.12), rgba(138, 124, 255, 0.12));
+  color: #d8dde6;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(180, 194, 214, 0.07));
 }
 
 .pit-icon-btn {
@@ -134,8 +142,8 @@
 
 .pit-tab-active {
   color: #fff;
-  border-bottom-color: #727ef0;
-  box-shadow: inset 0 -2px 0 rgba(114, 126, 240, 0.8);
+  border-bottom-color: #d7dde7;
+  box-shadow: inset 0 -2px 0 rgba(215, 221, 231, 0.85);
 }
 
 .pit-toolbar {
@@ -209,15 +217,15 @@
 .pit-new-post-btn {
   height: 42px;
   border-radius: 12px;
-  border: 1px solid rgba(120, 131, 235, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   padding: 0 14px;
-  color: #fff;
-  background: linear-gradient(135deg, #5f6fe2, #7368cc);
+  color: #f6f8fb;
+  background: linear-gradient(135deg, rgba(210, 218, 232, 0.24), rgba(172, 183, 202, 0.2));
   display: inline-flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  box-shadow: 0 8px 20px rgba(85, 101, 210, 0.28);
+  box-shadow: 0 8px 20px rgba(140, 154, 178, 0.18);
 }
 
 .pit-layout-grid {
@@ -253,8 +261,8 @@
 .pit-saved-card:hover,
 .pit-sidebar-item:hover {
   transform: translateY(-2px);
-  border-color: rgba(118, 130, 235, 0.42);
-  box-shadow: 0 12px 26px rgba(74, 92, 190, 0.15);
+  border-color: rgba(214, 221, 231, 0.42);
+  box-shadow: 0 12px 26px rgba(126, 138, 160, 0.16);
 }
 
 .pit-post-header {
@@ -294,9 +302,9 @@
 
 .pit-post-content-box {
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 14px;
-  background: rgba(10, 12, 24, 0.55);
+  background: rgba(8, 10, 14, 0.72);
 }
 
 .pit-post-content,
@@ -326,7 +334,7 @@
 .pit-link-btn {
   border: none;
   background: transparent;
-  color: #7f8ff0;
+  color: #cfd6e2;
   cursor: pointer;
   font-size: 13px;
   padding: 0;
@@ -345,8 +353,8 @@
 }
 
 .pit-mini-btn-accent {
-  border-color: rgba(120, 131, 235, 0.5);
-  background: rgba(120, 131, 235, 0.14);
+  border-color: rgba(214, 221, 231, 0.4);
+  background: rgba(214, 221, 231, 0.11);
 }
 
 .pit-image-wrap {
@@ -439,7 +447,7 @@
 }
 
 .pit-bookmarked {
-  color: #7f8ff0;
+  color: #d8dee9;
 }
 
 .pit-sidebar-card {
@@ -542,6 +550,9 @@
 
 .pit-modal-card {
   width: min(980px, 100%);
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(8, 10, 14, 0.9);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
 }
 
 .pit-modal-card-post {
@@ -577,7 +588,7 @@
 .pit-comments-wrap {
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.015);
   padding: 12px;
 }
 

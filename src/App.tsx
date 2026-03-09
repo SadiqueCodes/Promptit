@@ -26,9 +26,13 @@ interface UsageInfo {
 }
 
 export default function App() {
+  const USERNAME_STORAGE_KEY = "promptit-display-name";
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string>("");
+  const [usernameInput, setUsernameInput] = useState<string>("");
+  const [isSavingUsername, setIsSavingUsername] = useState(false);
   const [inputPrompt, setInputPrompt] = useState("");
   const [currentPair, setCurrentPair] = useState<PromptPair | null>(null);
   const [history, setHistory] = useState<PromptPair[]>([]);
@@ -69,12 +73,26 @@ export default function App() {
 
   // Check authentication status on mount
   useEffect(() => {
+    const deriveName = (email: string | null, metadataName: string | null) => {
+      if (metadataName && metadataName.trim()) return metadataName.trim();
+      const local = localStorage.getItem(USERNAME_STORAGE_KEY);
+      if (local && local.trim()) return local.trim();
+      if (email && email.includes("@")) return email.split("@")[0];
+      return "User";
+    };
+
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           setIsAuthenticated(true);
-          setUserEmail(session.user.email || null);
+          const email = session.user.email || null;
+          const metadataName = (session.user.user_metadata?.display_name as string | undefined) || null;
+          const resolvedName = deriveName(email, metadataName);
+          setUserEmail(email);
+          setDisplayName(resolvedName);
+          setUsernameInput(resolvedName);
+          localStorage.setItem(USERNAME_STORAGE_KEY, resolvedName);
           // Load usage info
           await loadUsageInfo(session.access_token);
         }
@@ -90,7 +108,15 @@ export default function App() {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setIsAuthenticated(!!session);
-      setUserEmail(session?.user.email || null);
+      const email = session?.user.email || null;
+      const metadataName = (session?.user.user_metadata?.display_name as string | undefined) || null;
+      const resolvedName = session ? deriveName(email, metadataName) : "";
+      setUserEmail(email);
+      setDisplayName(resolvedName);
+      setUsernameInput(resolvedName);
+      if (session) {
+        localStorage.setItem(USERNAME_STORAGE_KEY, resolvedName);
+      }
       if (session) {
         await loadUsageInfo(session.access_token);
       }
@@ -98,6 +124,12 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (showSettings) {
+      setUsernameInput(displayName || "");
+    }
+  }, [showSettings, displayName]);
 
 
 
@@ -342,10 +374,43 @@ export default function App() {
       await supabase.auth.signOut();
       setIsAuthenticated(false);
       setUserEmail(null);
+      setDisplayName("");
+      setUsernameInput("");
       toast.success('Logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
       toast.error('Failed to logout');
+    }
+  };
+
+  const handleSaveUsername = async () => {
+    const trimmed = usernameInput.trim();
+    if (!trimmed) {
+      toast.error("Username cannot be empty");
+      return;
+    }
+
+    setIsSavingUsername(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { display_name: trimmed },
+      });
+
+      if (error) {
+        console.error("Username update error:", error);
+        toast.error("Failed to update username");
+        setIsSavingUsername(false);
+        return;
+      }
+
+      setDisplayName(trimmed);
+      localStorage.setItem(USERNAME_STORAGE_KEY, trimmed);
+      toast.success("Username updated");
+    } catch (error) {
+      console.error("Username update exception:", error);
+      toast.error("Failed to update username");
+    } finally {
+      setIsSavingUsername(false);
     }
   };
 
@@ -519,6 +584,7 @@ export default function App() {
       <>
         <CommunityPage
           userEmail={userEmail}
+          userName={displayName}
           templates={customTemplates}
           onBack={() => setCurrentView("studio")}
           onOpenProfile={() => setShowSettings(true)}
@@ -559,6 +625,26 @@ export default function App() {
                   <div className="bg-white/5 border border-white/10 rounded-lg p-4">
                     <p className="text-sm text-slate-400 mb-1">Signed in as</p>
                     <p className="text-white">{userEmail}</p>
+                  </div>
+
+                  <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                    <p className="text-sm text-slate-400 mb-2">Username</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={usernameInput}
+                        onChange={(e) => setUsernameInput(e.target.value)}
+                        className="flex-1 px-3 py-2 bg-black/30 border border-white/15 rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-white/30"
+                        placeholder="Enter username"
+                      />
+                      <Button
+                        onClick={handleSaveUsername}
+                        disabled={isSavingUsername}
+                        className="bg-white/10 hover:bg-white/15 border border-white/20 text-white"
+                      >
+                        {isSavingUsername ? "Saving..." : "Save"}
+                      </Button>
+                    </div>
                   </div>
 
                   {usageInfo && (
@@ -1160,6 +1246,26 @@ export default function App() {
                   <div className="bg-white/5 border border-white/10 rounded-lg p-4">
                     <p className="text-sm text-slate-400 mb-1">Signed in as</p>
                     <p className="text-white">{userEmail}</p>
+                  </div>
+
+                  <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                    <p className="text-sm text-slate-400 mb-2">Username</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={usernameInput}
+                        onChange={(e) => setUsernameInput(e.target.value)}
+                        className="flex-1 px-3 py-2 bg-black/30 border border-white/15 rounded-lg text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-white/30"
+                        placeholder="Enter username"
+                      />
+                      <Button
+                        onClick={handleSaveUsername}
+                        disabled={isSavingUsername}
+                        className="bg-white/10 hover:bg-white/15 border border-white/20 text-white"
+                      >
+                        {isSavingUsername ? "Saving..." : "Save"}
+                      </Button>
+                    </div>
                   </div>
 
                   {usageInfo && (

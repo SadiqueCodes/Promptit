@@ -9,6 +9,7 @@ import type { Post, Comment } from './types';
 interface PostDetailModalProps {
   post: Post;
   userEmail?: string | null;
+  userName?: string | null;
   onCommentsChanged?: (postId: string, commentCount: number) => void;
   onClose: () => void;
 }
@@ -78,7 +79,7 @@ function countNodes(nodes: CommentNode[]): number {
   return nodes.reduce((sum, n) => sum + 1 + countNodes(n.replies), 0);
 }
 
-export function PostDetailModal({ post, userEmail = null, onCommentsChanged, onClose }: PostDetailModalProps) {
+export function PostDetailModal({ post, userEmail = null, userName = null, onCommentsChanged, onClose }: PostDetailModalProps) {
   const [commentText, setCommentText] = useState('');
   const [copied, setCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -116,7 +117,12 @@ export function PostDetailModal({ post, userEmail = null, onCommentsChanged, onC
     setIsSubmitting(true);
 
     const { data: auth } = await supabase.auth.getUser();
-    const author = userEmail || auth.user?.email || 'Anonymous';
+    const author =
+      userName ||
+      (auth.user?.user_metadata?.display_name as string | undefined) ||
+      userEmail ||
+      auth.user?.email ||
+      'Anonymous';
 
     const { error } = await supabase.from('community_comments').insert({
       post_id: post.id,
