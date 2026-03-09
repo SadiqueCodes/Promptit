@@ -2691,6 +2691,28 @@ html {
   scrollbar-width: thin;
 }
 
+@keyframes promptit-glow-flow {
+  0% {
+    transform: translateY(0) scale(1);
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.35));
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(-2px) scale(1.08);
+    filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.95));
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.35));
+    opacity: 0.7;
+  }
+}
+
+.promptit-glow-flow {
+  animation: promptit-glow-flow 1.6s ease-in-out infinite;
+}
+
 @property --tw-translate-x {
   syntax: "*";
   inherits: false;

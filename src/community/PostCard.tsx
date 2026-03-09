@@ -75,11 +75,11 @@ export function PostCard({ post, onUpvote, onDownvote, onComment, onBookmark, on
       </div>
 
       <div className="pit-interaction-bar">
-        <button className="pit-vote-btn" onClick={() => onUpvote(post.id)}>
+        <button className={`pit-vote-btn ${post.userVote === 'up' ? 'pit-vote-active' : ''}`} onClick={() => onUpvote(post.id)}>
           <ArrowUp size={16} />
           <span>{post.upvotes}</span>
         </button>
-        <button className="pit-vote-btn" onClick={() => onDownvote(post.id)}>
+        <button className={`pit-vote-btn ${post.userVote === 'down' ? 'pit-vote-active' : ''}`} onClick={() => onDownvote(post.id)}>
           <ArrowDown size={16} />
           <span>{post.downvotes}</span>
         </button>
@@ -87,7 +87,10 @@ export function PostCard({ post, onUpvote, onDownvote, onComment, onBookmark, on
           <MessageSquare size={16} />
           <span>{post.comments}</span>
         </button>
-        <button className="pit-bookmark-btn" onClick={() => onBookmark(post.id)}>
+        <button
+          className={`pit-bookmark-btn ${post.bookmarked ? 'pit-bookmark-active' : ''}`}
+          onClick={() => onBookmark(post.id)}
+        >
           <Bookmark size={16} className={post.bookmarked ? 'pit-bookmarked' : ''} />
         </button>
       </div>

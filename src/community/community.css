@@ -86,15 +86,44 @@
   gap: 10px;
 }
 
-.pit-logo-wrap {
-  border: 1px solid rgba(255, 255, 255, 0.1);
+.pit-logo-wrap,
+.pit-logo-btn,
+.pit-home-btn {
+  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
   color: #fff;
   padding: 8px 12px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.pit-logo-btn {
+  cursor: pointer;
+  font: inherit;
+}
+
+.pit-home-btn {
+  cursor: pointer;
+  font: inherit;
+}
+
+.pit-home-text-btn {
+  border: none;
+  background: transparent;
+  color: #d8dde6;
+  padding: 0 2px;
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 490;
+  cursor: pointer;
+}
+
+.pit-home-text-btn:hover {
+  color: #ffffff;
 }
 
 .pit-community-chip {
@@ -234,6 +263,13 @@
   gap: 18px;
 }
 
+.pit-community-loader {
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .pit-feed-list {
   display: flex;
   flex-direction: column;
@@ -329,6 +365,7 @@
   justify-content: space-between;
   gap: 10px;
   margin-top: 10px;
+  flex-wrap: wrap;
 }
 
 .pit-link-btn {
@@ -350,11 +387,18 @@
   align-items: center;
   gap: 6px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .pit-mini-btn-accent {
   border-color: rgba(214, 221, 231, 0.4);
   background: rgba(214, 221, 231, 0.11);
+}
+
+.pit-mini-btn-danger {
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.14);
+  color: #fecaca;
 }
 
 .pit-image-wrap {
@@ -427,6 +471,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .pit-vote-btn,
@@ -440,6 +485,7 @@
   gap: 6px;
   padding: 7px 10px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .pit-bookmark-btn {
@@ -448,6 +494,19 @@
 
 .pit-bookmarked {
   color: #d8dee9;
+  fill: currentColor;
+}
+
+.pit-bookmark-active {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.pit-vote-active {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.09);
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.12);
 }
 
 .pit-sidebar-card {
@@ -481,6 +540,7 @@
   display: flex;
   gap: 8px;
   margin-top: 12px;
+  flex-wrap: wrap;
 }
 
 .pit-load-sentinel {
@@ -557,6 +617,10 @@
 
 .pit-modal-card-post {
   max-width: 760px;
+}
+
+.pit-modal-card-compact {
+  max-width: 420px;
 }
 
 .pit-modal-card-full {
@@ -696,5 +760,134 @@
 
   .pit-saved-card {
     padding: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .pit-community-shell {
+    padding: 10px 8px;
+  }
+
+  .pit-community-header-inner {
+    padding: 10px 8px;
+    gap: 8px;
+  }
+
+  .pit-community-chip span {
+    display: none;
+  }
+
+  .pit-community-chip {
+    padding: 6px 8px;
+  }
+
+  .pit-logo-wrap {
+    font-size: 18px;
+  }
+
+  .pit-tabs-wrap {
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+
+  .pit-tab {
+    padding: 10px 2px;
+    font-size: 14px;
+  }
+
+  .pit-post-card,
+  .pit-sidebar-card,
+  .pit-saved-card {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .pit-post-title {
+    font-size: 18px;
+    line-height: 1.35;
+  }
+
+  .pit-post-content-box {
+    padding: 10px;
+  }
+
+  .pit-post-actions-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pit-post-actions-top .pit-mini-btn {
+    justify-content: center;
+  }
+
+  .pit-image-stage {
+    height: 200px;
+  }
+
+  .pit-interaction-bar {
+    gap: 8px;
+  }
+
+  .pit-vote-btn,
+  .pit-bookmark-btn {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .pit-bookmark-btn {
+    margin-left: 0;
+  }
+
+  .pit-sidebar-item-actions {
+    flex-direction: column;
+  }
+
+  .pit-sidebar-item-actions .pit-mini-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .pit-modal-overlay {
+    padding: 8px;
+  }
+
+  .pit-modal-card,
+  .pit-modal-card-post,
+  .pit-modal-card-full {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 12px;
+  }
+
+  .pit-modal-head {
+    padding: 10px;
+  }
+
+  .pit-modal-scroll {
+    padding: 10px;
+  }
+
+  .pit-form-grid {
+    padding: 10px;
+  }
+
+  .pit-modal-footer {
+    padding: 10px;
+    flex-direction: column-reverse;
+  }
+
+  .pit-modal-footer .pit-mini-btn,
+  .pit-modal-footer .pit-new-post-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .pit-reply-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pit-reply-row .pit-mini-btn {
+    width: 100%;
+    justify-content: center;
   }
 }

@@ -35,14 +35,24 @@ create table if not exists public.community_saved_posts (
   primary key (user_id, post_id)
 );
 
+create table if not exists public.community_post_votes (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  post_id uuid not null references public.community_posts(id) on delete cascade,
+  vote_type text not null check (vote_type in ('up', 'down')),
+  created_at timestamptz not null default now(),
+  primary key (user_id, post_id)
+);
+
 create index if not exists community_posts_created_at_idx on public.community_posts (created_at desc);
 create index if not exists community_comments_post_id_idx on public.community_comments (post_id);
 create index if not exists community_comments_parent_comment_id_idx on public.community_comments (parent_comment_id);
 create index if not exists community_saved_posts_post_id_idx on public.community_saved_posts (post_id);
+create index if not exists community_post_votes_post_id_idx on public.community_post_votes (post_id);
 
 alter table public.community_posts enable row level security;
 alter table public.community_comments enable row level security;
 alter table public.community_saved_posts enable row level security;
+alter table public.community_post_votes enable row level security;
 
 drop policy if exists "community_posts_select" on public.community_posts;
 create policy "community_posts_select"
@@ -102,5 +112,30 @@ create policy "community_saved_posts_insert_own"
 drop policy if exists "community_saved_posts_delete_own" on public.community_saved_posts;
 create policy "community_saved_posts_delete_own"
   on public.community_saved_posts
+  for delete
+  using (auth.uid() = user_id);
+
+drop policy if exists "community_post_votes_select" on public.community_post_votes;
+create policy "community_post_votes_select"
+  on public.community_post_votes
+  for select
+  using (true);
+
+drop policy if exists "community_post_votes_insert_own" on public.community_post_votes;
+create policy "community_post_votes_insert_own"
+  on public.community_post_votes
+  for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "community_post_votes_update_own" on public.community_post_votes;
+create policy "community_post_votes_update_own"
+  on public.community_post_votes
+  for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "community_post_votes_delete_own" on public.community_post_votes;
+create policy "community_post_votes_delete_own"
+  on public.community_post_votes
   for delete
   using (auth.uid() = user_id);

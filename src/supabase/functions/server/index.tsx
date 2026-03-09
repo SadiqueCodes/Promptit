@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
@@ -22,6 +23,36 @@ const GEMINI_API_KEY = "AIzaSyAbyxQu_ITEIOQIjw3IawrcJx57lYZAMTY";
 
 // Usage limits - unlimited for everyone
 const FREE_TRANSFORMATIONS = 999999;
+
+const getUsageCount = async (supabase: any, userId: string): Promise<number> => {
+  const { data, error } = await supabase
+    .from('user_usage')
+    .select('transformation_count')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data?.transformation_count ?? 0;
+};
+
+const incrementUsageCount = async (supabase: any, userId: string): Promise<number> => {
+  const { data, error } = await supabase.rpc('increment_user_usage', {
+    p_user_id: userId,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (typeof data !== 'number') {
+    throw new Error('Invalid usage increment response');
+  }
+
+  return data;
+};
 
 // Health check endpoint
 app.get("/make-server-2313fdc9/health", (c) => {
@@ -304,7 +335,7 @@ app.post("/make-server-2313fdc9/enhance", async (c) => {
     }
 
     // Check subscription status and usage
-    const transformationCount = await kv.get(`transformations:${user.id}`) || 0;
+    const transformationCount = await getUsageCount(supabase, user.id);
     const subscriptionStatus = await kv.get(`subscription:${user.id}`) || 'free';
     
     console.log('Usage check:', { transformationCount, subscriptionStatus, freeLimit: FREE_TRANSFORMATIONS });
@@ -361,14 +392,14 @@ app.post("/make-server-2313fdc9/enhance", async (c) => {
     }
 
     // Increment usage counter
-    await kv.set(`transformations:${user.id}`, transformationCount + 1);
-    console.log(`Incremented transformation count for user ${user.id}: ${transformationCount} -> ${transformationCount + 1}`);
+    const nextCount = await incrementUsageCount(supabase, user.id);
+    console.log(`Incremented transformation count for user ${user.id}: ${transformationCount} -> ${nextCount}`);
 
     return c.json({ 
       success: true,
       enhancedPrompt,
       usageInfo: {
-        used: transformationCount + 1,
+        used: nextCount,
         limit: FREE_TRANSFORMATIONS,
         hasUnlimitedAccess: subscriptionStatus === 'active'
       }
@@ -408,7 +439,7 @@ app.get("/make-server-2313fdc9/usage", async (c) => {
     }
 
     // Get usage count and subscription status
-    const transformationCount = await kv.get(`transformations:${user.id}`) || 0;
+    const transformationCount = await getUsageCount(supabase, user.id);
     const subscriptionStatus = 'active'; // Everyone gets unlimited access
     const subscriptionPlan = 'unlimited';
 
@@ -422,6 +453,39 @@ app.get("/make-server-2313fdc9/usage", async (c) => {
   } catch (err) {
     console.error('Error getting usage:', err);
     return c.json({ error: "Failed to get usage stats" }, 500);
+  }
+});
+
+// Increment usage counter (for client-side enhancement flows like Puter)
+app.post("/make-server-2313fdc9/usage/increment", async (c) => {
+  try {
+    const jwt = c.req.header('X-Supabase-Auth');
+
+    if (!jwt) {
+      return c.json({ error: "Unauthorized - no auth token" }, 401);
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
+    if (authError || !user?.id) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    const nextCount = await incrementUsageCount(supabase, user.id);
+
+    return c.json({
+      success: true,
+      transformationCount: nextCount,
+      freeLimit: FREE_TRANSFORMATIONS,
+      hasUnlimitedAccess: true,
+    });
+  } catch (err) {
+    console.error('Error incrementing usage:', err);
+    return c.json({ error: "Failed to increment usage" }, 500);
   }
 });
 

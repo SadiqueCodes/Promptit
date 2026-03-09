@@ -25,10 +25,19 @@ interface UsageInfo {
   hasUnlimitedAccess: boolean;
 }
 
+interface PromptHistoryRow {
+  id: string;
+  user_id: string;
+  original_prompt: string;
+  enhanced_prompt: string;
+  created_at: string;
+}
+
 export default function App() {
   const USERNAME_STORAGE_KEY = "promptit-display-name";
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
   const [usernameInput, setUsernameInput] = useState<string>("");
@@ -86,6 +95,7 @@ export default function App() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           setIsAuthenticated(true);
+          setAuthUserId(session.user.id);
           const email = session.user.email || null;
           const metadataName = (session.user.user_metadata?.display_name as string | undefined) || null;
           const resolvedName = deriveName(email, metadataName);
@@ -108,6 +118,7 @@ export default function App() {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setIsAuthenticated(!!session);
+      setAuthUserId(session?.user.id || null);
       const email = session?.user.email || null;
       const metadataName = (session?.user.user_metadata?.display_name as string | undefined) || null;
       const resolvedName = session ? deriveName(email, metadataName) : "";
@@ -124,6 +135,81 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const loadHistoryFromDatabase = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("prompt_history")
+        .select("id, user_id, original_prompt, enhanced_prompt, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(300);
+
+      if (error) {
+        console.error("Failed to load history from DB:", error);
+        return;
+      }
+
+      const mapped: PromptPair[] = ((data || []) as PromptHistoryRow[]).map((row) => ({
+        id: row.id,
+        original: row.original_prompt,
+        enhanced: row.enhanced_prompt,
+        timestamp: new Date(row.created_at),
+      }));
+
+      setHistory(mapped);
+    } catch (error) {
+      console.error("Failed to load history:", error);
+    }
+  };
+
+  const saveHistoryEntryToDatabase = async (userId: string, pair: PromptPair) => {
+    try {
+      const { error } = await supabase.from("prompt_history").insert({
+        user_id: userId,
+        original_prompt: pair.original,
+        enhanced_prompt: pair.enhanced,
+      });
+
+      if (error) {
+        console.error("Failed to save history entry:", error);
+      }
+    } catch (error) {
+      console.error("Failed to save history entry:", error);
+    }
+  };
+
+  const clearHistoryInDatabase = async (userId: string) => {
+    const { error } = await supabase.from("prompt_history").delete().eq("user_id", userId);
+    if (error) {
+      console.error("Failed to clear history:", error);
+      toast.error("Failed to clear history");
+      return false;
+    }
+    return true;
+  };
+
+  const handleClearHistory = async () => {
+    if (!authUserId) {
+      setHistory([]);
+      toast.success("History cleared");
+      return;
+    }
+
+    const ok = await clearHistoryInDatabase(authUserId);
+    if (!ok) return;
+    setHistory([]);
+    toast.success("History cleared");
+  };
+
+  // Load prompt history from Supabase per authenticated user
+  useEffect(() => {
+    if (!authUserId) {
+      setHistory([]);
+      return;
+    }
+    loadHistoryFromDatabase(authUserId);
+  }, [authUserId]);
 
   useEffect(() => {
     if (showSettings) {
@@ -348,6 +434,54 @@ export default function App() {
 
       setCurrentPair(newPair);
       setHistory((prev) => [newPair, ...prev]);
+      if (authUserId) {
+        saveHistoryEntryToDatabase(authUserId, newPair);
+      }
+
+      // Persist transformation usage in backend for accurate cross-session count
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          const usageResp = await fetch(
+            `https://${projectId}.supabase.co/functions/v1/make-server-2313fdc9/usage/increment`,
+            {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${publicAnonKey}`,
+                "X-Supabase-Auth": session.access_token,
+              },
+            }
+          );
+
+          if (usageResp.ok) {
+            const usageData = await usageResp.json();
+            setUsageInfo((prev) => prev ? {
+              ...prev,
+              transformationCount: usageData.transformationCount ?? prev.transformationCount,
+            } : {
+              transformationCount: usageData.transformationCount ?? 0,
+              subscriptionStatus: "active",
+              subscriptionPlan: "unlimited",
+              freeLimit: usageData.freeLimit ?? 999999,
+              hasUnlimitedAccess: usageData.hasUnlimitedAccess ?? true,
+            });
+          } else {
+            // Fallback UI increment if backend usage update fails
+            setUsageInfo((prev) =>
+              prev
+                ? { ...prev, transformationCount: prev.transformationCount + 1 }
+                : prev
+            );
+          }
+        }
+      } catch (usageError) {
+        console.error("Usage increment error:", usageError);
+        setUsageInfo((prev) =>
+          prev
+            ? { ...prev, transformationCount: prev.transformationCount + 1 }
+            : prev
+        );
+      }
 
       toast.success('Prompt enhanced successfully!');
     } catch (error: any) {
@@ -373,6 +507,7 @@ export default function App() {
     try {
       await supabase.auth.signOut();
       setIsAuthenticated(false);
+      setAuthUserId(null);
       setUserEmail(null);
       setDisplayName("");
       setUsernameInput("");
@@ -565,10 +700,12 @@ export default function App() {
   // Show loading while checking auth
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-[#05050A] via-[#090B16] to-[#0B1020] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-400">Loading...</p>
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center">
+            <Sparkles className="h-7 w-7 text-slate-100 promptit-glow-flow" />
+          </div>
+          <p className="text-slate-300">Loading...</p>
         </div>
       </div>
     );
@@ -1165,10 +1302,9 @@ export default function App() {
                     </div>
                   </div>
                   <Button
-                    onClick={() => {
-                      setHistory([]);
+                    onClick={async () => {
+                      await handleClearHistory();
                       setShowHistory(false);
-                      toast.success("History cleared");
                     }}
                     variant="ghost"
                     size="sm"
@@ -1462,10 +1598,7 @@ export default function App() {
                               <div className="flex items-center justify-between mb-4">
                                 <p className="text-xs text-slate-500">{history.length} prompt{history.length !== 1 ? 's' : ''} enhanced</p>
                                 <Button
-                                  onClick={() => {
-                                    setHistory([]);
-                                    toast.success("History cleared");
-                                  }}
+                                  onClick={handleClearHistory}
                                   variant="ghost"
                                   size="sm"
                                   className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-7 text-xs gap-1.5"

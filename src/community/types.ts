@@ -10,6 +10,7 @@ export interface Post {
   image?: string;
   upvotes: number;
   downvotes: number;
+  userVote?: 'up' | 'down' | null;
   comments: number;
   bookmarked: boolean;
   category: string;

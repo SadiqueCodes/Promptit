@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Eye, Trash2 } from 'lucide-react';
+import { Eye, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { CommunityHeader } from './CommunityHeader';
 import { CommunityTabs } from './CommunityTabs';
@@ -54,6 +54,12 @@ interface SavedPostRow {
   post_id: string;
 }
 
+interface VoteRow {
+  post_id: string;
+  vote_type: 'up' | 'down';
+  user_id?: string;
+}
+
 function timeAgo(isoTime: string): string {
   const diffMs = Date.now() - new Date(isoTime).getTime();
   const diffMinutes = Math.max(1, Math.floor(diffMs / (1000 * 60)));
@@ -95,7 +101,11 @@ export function CommunityPage({
   const [showNewPostModal, setShowNewPostModal] = useState(false);
   const [initialTemplateId, setInitialTemplateId] = useState('');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [postPendingDelete, setPostPendingDelete] = useState<Post | null>(null);
+  const [isDeletingPost, setIsDeletingPost] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [votingPostIds, setVotingPostIds] = useState<Record<string, boolean>>({});
+  const [isPostsLoading, setIsPostsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(8);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -112,44 +122,80 @@ export function CommunityPage({
   );
 
   const loadPosts = async () => {
-    const { data: auth } = await supabase.auth.getUser();
-    const authUserId = auth.user?.id || null;
-    if (authUserId && authUserId !== currentUserId) {
-      setCurrentUserId(authUserId);
-    }
+    setIsPostsLoading(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const authUserId = auth.user?.id || null;
+      if (authUserId && authUserId !== currentUserId) {
+        setCurrentUserId(authUserId);
+      }
 
-    const { data: postRows, error: postsError } = await supabase
-      .from('community_posts')
-      .select('*')
-      .order('created_at', { ascending: false });
+      const { data: postRows, error: postsError } = await supabase
+        .from('community_posts')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (postsError) {
-      console.error('Error loading community posts:', postsError);
-      toast.error('Failed to load community feed');
-      return;
-    }
+      if (postsError) {
+        console.error('Error loading community posts:', postsError);
+        toast.error('Failed to load community feed');
+        return;
+      }
 
     const { data: commentRows } = await supabase
       .from('community_comments')
       .select('post_id');
 
-    let savedPostIds = new Set<string>();
+    const { data: voteRows, error: votesError } = await supabase
+      .from('community_post_votes')
+      .select('post_id, vote_type');
+
+    if (votesError) {
+      console.error('Error loading vote rows:', votesError);
+    }
+
+    let myVoteMap = new Map<string, 'up' | 'down'>();
     if (authUserId) {
-      const { data: savedRows, error: savedError } = await supabase
-        .from('community_saved_posts')
-        .select('post_id')
+      const { data: myVotes, error: myVotesError } = await supabase
+        .from('community_post_votes')
+        .select('post_id, vote_type')
         .eq('user_id', authUserId);
 
-      if (savedError) {
-        console.error('Error loading saved posts:', savedError);
+      if (myVotesError) {
+        console.error('Error loading user votes:', myVotesError);
       } else {
-        savedPostIds = new Set(((savedRows || []) as SavedPostRow[]).map((row) => row.post_id));
+        ((myVotes || []) as VoteRow[]).forEach((row) => {
+          myVoteMap.set(row.post_id, row.vote_type);
+        });
       }
     }
+
+      let savedPostIds = new Set<string>();
+      if (authUserId) {
+        const { data: savedRows, error: savedError } = await supabase
+          .from('community_saved_posts')
+          .select('post_id')
+          .eq('user_id', authUserId);
+
+        if (savedError) {
+          console.error('Error loading saved posts:', savedError);
+        } else {
+          savedPostIds = new Set(((savedRows || []) as SavedPostRow[]).map((row) => row.post_id));
+        }
+      }
 
     const counts = new Map<string, number>();
     (commentRows as CommentCountRow[] | null)?.forEach((row) => {
       counts.set(row.post_id, (counts.get(row.post_id) || 0) + 1);
+    });
+
+    const upvoteCounts = new Map<string, number>();
+    const downvoteCounts = new Map<string, number>();
+    ((voteRows || []) as VoteRow[]).forEach((row) => {
+      if (row.vote_type === 'up') {
+        upvoteCounts.set(row.post_id, (upvoteCounts.get(row.post_id) || 0) + 1);
+      } else if (row.vote_type === 'down') {
+        downvoteCounts.set(row.post_id, (downvoteCounts.get(row.post_id) || 0) + 1);
+      }
     });
 
     const mapped = ((postRows || []) as PostRow[]).map((row) => ({
@@ -162,14 +208,18 @@ export function CommunityPage({
       title: row.title,
       description: row.description,
       image: row.image_url || undefined,
-      upvotes: row.upvotes || 0,
-      downvotes: row.downvotes || 0,
+      upvotes: upvoteCounts.has(row.id) ? (upvoteCounts.get(row.id) || 0) : (row.upvotes || 0),
+      downvotes: downvoteCounts.has(row.id) ? (downvoteCounts.get(row.id) || 0) : (row.downvotes || 0),
+      userVote: myVoteMap.get(row.id) || null,
       comments: counts.get(row.id) || 0,
       bookmarked: savedPostIds.has(row.id),
       category: row.category || 'other',
     }));
 
-    setPosts(mapped);
+      setPosts(mapped);
+    } finally {
+      setIsPostsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -245,21 +295,90 @@ export function CommunityPage({
     }
   };
 
-  const handleUpvote = (postId: string) => {
+  const submitVote = (postId: string, targetVote: 'up' | 'down') => {
+    if (!currentUserId) {
+      toast.error('Please sign in to vote');
+      return;
+    }
+    if (votingPostIds[postId]) return;
+
     const post = posts.find((p) => p.id === postId);
     if (!post) return;
-    const next = post.upvotes + 1;
-    setPosts(posts.map((p) => (p.id === postId ? { ...p, upvotes: next } : p)));
-    updatePostField(postId, 'upvotes', next);
+
+    const previousVote = post.userVote || null;
+    const nextVote: 'up' | 'down' | null = previousVote === targetVote ? null : targetVote;
+
+    const nextUpvotes =
+      post.upvotes - (previousVote === 'up' ? 1 : 0) + (nextVote === 'up' ? 1 : 0);
+    const nextDownvotes =
+      post.downvotes - (previousVote === 'down' ? 1 : 0) + (nextVote === 'down' ? 1 : 0);
+
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? {
+              ...p,
+              upvotes: Math.max(0, nextUpvotes),
+              downvotes: Math.max(0, nextDownvotes),
+              userVote: nextVote,
+            }
+          : p,
+      ),
+    );
+
+    const run = async () => {
+      setVotingPostIds((prev) => ({ ...prev, [postId]: true }));
+      try {
+        if (!nextVote) {
+          const { error } = await supabase
+            .from('community_post_votes')
+            .delete()
+            .eq('user_id', currentUserId)
+            .eq('post_id', postId);
+          if (error) {
+            console.error('Remove vote error:', error);
+            toast.error('Failed to update vote');
+            await loadPosts();
+            return;
+          }
+        } else {
+          const { error } = await supabase
+            .from('community_post_votes')
+            .upsert(
+              {
+                user_id: currentUserId,
+                post_id: postId,
+                vote_type: nextVote,
+              },
+              { onConflict: 'user_id,post_id' },
+            );
+          if (error) {
+            console.error('Vote upsert error:', error);
+            toast.error('Failed to update vote');
+            await loadPosts();
+            return;
+          }
+        }
+
+        // Keep aggregate columns in sync for compatibility with existing queries/tools.
+        await supabase
+          .from('community_posts')
+          .update({
+            upvotes: Math.max(0, nextUpvotes),
+            downvotes: Math.max(0, nextDownvotes),
+          })
+          .eq('id', postId);
+      } finally {
+        setVotingPostIds((prev) => ({ ...prev, [postId]: false }));
+      }
+    };
+
+    run();
   };
 
-  const handleDownvote = (postId: string) => {
-    const post = posts.find((p) => p.id === postId);
-    if (!post) return;
-    const next = post.downvotes + 1;
-    setPosts(posts.map((p) => (p.id === postId ? { ...p, downvotes: next } : p)));
-    updatePostField(postId, 'downvotes', next);
-  };
+  const handleUpvote = (postId: string) => submitVote(postId, 'up');
+
+  const handleDownvote = (postId: string) => submitVote(postId, 'down');
 
   const handleComment = (postId: string) => {
     const post = posts.find((p) => p.id === postId);
@@ -377,10 +496,11 @@ export function CommunityPage({
     const target = posts.find((post) => post.id === postId);
     if (!target) return;
 
-    const ok = window.confirm(`Delete "${target.title}"?`);
-    if (!ok) return;
+    setIsDeletingPost(true);
 
     const { error } = await supabase.from('community_posts').delete().eq('id', postId);
+    setIsDeletingPost(false);
+
     if (error) {
       console.error('Delete post error:', error);
       toast.error('Failed to delete post');
@@ -389,6 +509,7 @@ export function CommunityPage({
 
     setPosts((prev) => prev.filter((post) => post.id !== postId));
     setSelectedPost((prev) => (prev?.id === postId ? null : prev));
+    setPostPendingDelete(null);
     toast.success('Post deleted');
   };
 
@@ -417,16 +538,22 @@ export function CommunityPage({
 
             <div className="pit-layout-grid">
               <main>
-                <PostsFeed
-                  posts={visiblePosts}
-                  onUpvote={handleUpvote}
-                  onDownvote={handleDownvote}
-                  onComment={handleComment}
-                  onBookmark={handleBookmark}
-                  onOpenPost={setSelectedPost}
-                />
+                {isPostsLoading ? (
+                  <div className="pit-community-loader">
+                    <Sparkles className="h-7 w-7 text-slate-100 promptit-glow-flow" />
+                  </div>
+                ) : (
+                  <PostsFeed
+                    posts={visiblePosts}
+                    onUpvote={handleUpvote}
+                    onDownvote={handleDownvote}
+                    onComment={handleComment}
+                    onBookmark={handleBookmark}
+                    onOpenPost={setSelectedPost}
+                  />
+                )}
                 <div ref={sentinelRef} className="pit-load-sentinel">
-                  {visibleCount < sortedPosts.length ? 'Loading more posts...' : ''}
+                  {!isPostsLoading && visibleCount < sortedPosts.length ? 'Loading more posts...' : ''}
                 </div>
               </main>
 
@@ -456,7 +583,7 @@ export function CommunityPage({
                     </button>
                     <button
                       className="pit-mini-btn"
-                      onClick={() => handleDeletePost(post.id)}
+                      onClick={() => setPostPendingDelete(post)}
                     >
                       <Trash2 size={14} />
                       <span>Delete</span>
@@ -489,6 +616,38 @@ export function CommunityPage({
           onCommentsChanged={handleCommentsChanged}
           onClose={() => setSelectedPost(null)}
         />
+      )}
+
+      {postPendingDelete && (
+        <div className="pit-modal-overlay" onClick={() => !isDeletingPost && setPostPendingDelete(null)}>
+          <div className="pit-modal-card pit-modal-card-compact" onClick={(e) => e.stopPropagation()}>
+            <div className="pit-modal-head">
+              <h3>Delete Post</h3>
+            </div>
+            <div className="pit-form-grid">
+              <p className="pit-muted">
+                Are you sure you want to delete "{postPendingDelete.title}"?
+              </p>
+              <p className="pit-muted">This action cannot be undone.</p>
+            </div>
+            <div className="pit-modal-footer">
+              <button
+                className="pit-mini-btn"
+                onClick={() => setPostPendingDelete(null)}
+                disabled={isDeletingPost}
+              >
+                Cancel
+              </button>
+              <button
+                className="pit-mini-btn pit-mini-btn-danger"
+                onClick={() => handleDeletePost(postPendingDelete.id)}
+                disabled={isDeletingPost}
+              >
+                {isDeletingPost ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

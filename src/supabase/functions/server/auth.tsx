@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Hono } from "npm:hono";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 

@@ -1,4 +1,4 @@
-import { Home, Sparkles, User, Users } from 'lucide-react';
+import { Home, User, Users } from 'lucide-react';
 
 interface CommunityHeaderProps {
   onNavigateHome?: () => void;
@@ -10,13 +10,12 @@ export function CommunityHeader({ onNavigateHome, onOpenProfile }: CommunityHead
     <header className="pit-community-header">
       <div className="pit-community-header-inner">
         <div className="pit-community-left">
-          <button className="pit-icon-btn" aria-label="Back to home" onClick={onNavigateHome}>
+          <button className="pit-icon-btn" aria-label="Go to home" onClick={onNavigateHome}>
             <Home size={18} />
           </button>
-          <div className="pit-logo-wrap">
-            <Sparkles size={18} />
-            <span>PromptIT</span>
-          </div>
+          <button className="pit-home-text-btn" aria-label="Go to home" onClick={onNavigateHome}>
+            <span>Home</span>
+          </button>
         </div>
 
         <div className="pit-community-right">
