@@ -1,5 +1,4 @@
 import { PostCard } from './PostCard';
-import { EmptyState } from './EmptyState';
 import type { Post } from './types';
 
 interface PostsFeedProps {
@@ -8,15 +7,21 @@ interface PostsFeedProps {
   onDownvote: (id: string) => void;
   onComment: (id: string) => void;
   onBookmark: (id: string) => void;
+  onOpenPost: (post: Post) => void;
 }
 
-export function PostsFeed({ posts, onUpvote, onDownvote, onComment, onBookmark }: PostsFeedProps) {
+export function PostsFeed({ posts, onUpvote, onDownvote, onComment, onBookmark, onOpenPost }: PostsFeedProps) {
   if (posts.length === 0) {
-    return <EmptyState />;
+    return (
+      <div className="pit-empty-card">
+        <h3>No posts found</h3>
+        <p>Try changing search or filters.</p>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="pit-feed-list">
       {posts.map((post) => (
         <PostCard
           key={post.id}
@@ -25,6 +30,7 @@ export function PostsFeed({ posts, onUpvote, onDownvote, onComment, onBookmark }
           onDownvote={onDownvote}
           onComment={onComment}
           onBookmark={onBookmark}
+          onOpenPost={onOpenPost}
         />
       ))}
     </div>

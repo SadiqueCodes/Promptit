@@ -2673,6 +2673,24 @@ html {
 .focus\:border-blue-400:focus { border-color: #60a5fa; }
 .hover\:text-blue-300:hover { color: #93c5fd; }
 
+.thin-scrollbar::-webkit-scrollbar {
+  width: 2px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+}
+
+.thin-scrollbar {
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+  scrollbar-width: thin;
+}
+
 @property --tw-translate-x {
   syntax: "*";
   inherits: false;

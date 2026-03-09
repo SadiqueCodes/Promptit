@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Eye, Trash2 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { CommunityHeader } from './CommunityHeader';
 import { CommunityTabs } from './CommunityTabs';
@@ -8,18 +9,23 @@ import { PostsFeed } from './PostsFeed';
 import { MySidebar } from './MySidebar';
 import { NewPostModal } from './NewPostModal';
 import { PostDetailModal } from './PostDetailModal';
+import { DEFAULT_PROMPT_IMAGE } from './constants';
 import { supabase } from '../utils/supabase/client';
-import type { Post, Template } from './types';
+import type { Post, Template, TemplatePostPayload } from './types';
+import './community.css';
 
 interface SavedTemplate {
   id: string;
   title: string;
+  description?: string;
+  template?: string;
   iconName?: string;
 }
 
 interface CommunityPageProps {
   onNavigateHome?: () => void;
   onBack?: () => void;
+  onOpenProfile?: () => void;
   userEmail?: string | null;
   templates?: SavedTemplate[];
 }
@@ -46,32 +52,33 @@ interface CommentCountRow {
 function timeAgo(isoTime: string): string {
   const diffMs = Date.now() - new Date(isoTime).getTime();
   const diffMinutes = Math.max(1, Math.floor(diffMs / (1000 * 60)));
-  if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+  if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+  if (diffHours < 24) return `${diffHours} hours ago`;
   const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+  return `${diffDays} days ago`;
 }
 
 function mapIcon(iconName?: string): string {
-  if (!iconName) return '*';
+  if (!iconName) return '?';
   const byName: Record<string, string> = {
-    Sparkles: '*',
-    Mail: 'M',
-    FileText: 'T',
-    MessageSquare: 'C',
+    Sparkles: '?',
+    Mail: '?',
+    FileText: '??',
+    MessageSquare: '??',
     Code: '</>',
-    Briefcase: 'B',
-    GraduationCap: 'G',
-    Wand2: 'W',
-    History: 'H',
+    Briefcase: '??',
+    GraduationCap: '??',
+    Wand2: '??',
+    History: '??',
   };
-  return byName[iconName] || '*';
+  return byName[iconName] || '?';
 }
 
 export function CommunityPage({
   onNavigateHome,
   onBack,
+  onOpenProfile,
   userEmail = null,
   templates = [],
 }: CommunityPageProps) {
@@ -80,11 +87,21 @@ export function CommunityPage({
   const [sortFilter, setSortFilter] = useState<'hot' | 'new' | 'top'>('hot');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showNewPostModal, setShowNewPostModal] = useState(false);
+  const [initialTemplateId, setInitialTemplateId] = useState('');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(8);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  const sidebarTemplates: Template[] = useMemo(
-    () => templates.map((template) => ({ id: template.id, title: template.title, icon: mapIcon(template.iconName) })),
+  const normalizedTemplates: Template[] = useMemo(
+    () => templates.map((template) => ({
+      id: template.id,
+      title: template.title,
+      icon: mapIcon(template.iconName),
+      description: template.description || 'Template from PromptIT studio',
+      prompt: template.template || '',
+    })),
     [templates],
   );
 
@@ -100,13 +117,9 @@ export function CommunityPage({
       return;
     }
 
-    const { data: commentRows, error: commentsError } = await supabase
+    const { data: commentRows } = await supabase
       .from('community_comments')
       .select('post_id');
-
-    if (commentsError) {
-      console.error('Error loading comment counts:', commentsError);
-    }
 
     const counts = new Map<string, number>();
     (commentRows as CommentCountRow[] | null)?.forEach((row) => {
@@ -127,7 +140,7 @@ export function CommunityPage({
       downvotes: row.downvotes || 0,
       comments: counts.get(row.id) || 0,
       bookmarked: Boolean(row.bookmarked),
-      category: row.category || 'general',
+      category: row.category || 'other',
     }));
 
     setPosts(mapped);
@@ -137,19 +150,65 @@ export function CommunityPage({
     loadPosts();
   }, []);
 
-  const filteredPosts = posts.filter((post) => {
-    const query = searchQuery.toLowerCase();
-    const matchesSearch =
-      post.title.toLowerCase().includes(query) || post.description.toLowerCase().includes(query);
-    const matchesCategory = categoryFilter === 'all' || post.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
+  useEffect(() => {
+    const loadCurrentUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setCurrentUserId(data.user?.id || null);
+    };
+    loadCurrentUser();
+  }, []);
 
-  const sortedPosts = [...filteredPosts].sort((a, b) => {
-    if (sortFilter === 'hot') return b.upvotes - b.downvotes - (a.upvotes - a.downvotes);
-    if (sortFilter === 'new') return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
-    return b.upvotes - a.upvotes;
-  });
+  useEffect(() => {
+    setVisibleCount(8);
+  }, [searchQuery, sortFilter, categoryFilter]);
+
+  const filteredPosts = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return posts.filter((post) => {
+      const matchesSearch =
+        !q ||
+        post.title.toLowerCase().includes(q) ||
+        post.description.toLowerCase().includes(q) ||
+        post.author.toLowerCase().includes(q);
+      const matchesCategory = categoryFilter === 'all' || post.category === categoryFilter;
+      return matchesSearch && matchesCategory;
+    });
+  }, [posts, searchQuery, categoryFilter]);
+
+  const sortedPosts = useMemo(() => {
+    const next = [...filteredPosts];
+    next.sort((a, b) => {
+      if (sortFilter === 'hot') return (b.upvotes - b.downvotes) - (a.upvotes - a.downvotes);
+      if (sortFilter === 'new') return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      return b.upvotes - a.upvotes;
+    });
+    return next;
+  }, [filteredPosts, sortFilter]);
+
+  const visiblePosts = useMemo(() => sortedPosts.slice(0, visibleCount), [sortedPosts, visibleCount]);
+  const savedPosts = useMemo(() => posts.filter((post) => post.bookmarked), [posts]);
+
+  const myPosts = useMemo(() => {
+    const currentEmail = (userEmail || '').trim().toLowerCase();
+    return posts.filter((post) => {
+      if (currentUserId && post.userId === currentUserId) return true;
+      if (currentEmail && post.author.trim().toLowerCase() === currentEmail) return true;
+      return false;
+    });
+  }, [posts, currentUserId, userEmail]);
+
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const observer = new IntersectionObserver((entries) => {
+      const first = entries[0];
+      if (first?.isIntersecting) {
+        setVisibleCount((prev) => Math.min(prev + 6, sortedPosts.length));
+      }
+    }, { threshold: 0.2 });
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [sortedPosts.length]);
 
   const updatePostField = async (postId: string, field: 'upvotes' | 'downvotes' | 'bookmarked', value: number | boolean) => {
     const { error } = await supabase.from('community_posts').update({ [field]: value }).eq('id', postId);
@@ -166,7 +225,6 @@ export function CommunityPage({
     const next = post.upvotes + 1;
     setPosts(posts.map((p) => (p.id === postId ? { ...p, upvotes: next } : p)));
     updatePostField(postId, 'upvotes', next);
-    toast.success('Upvoted!');
   };
 
   const handleDownvote = (postId: string) => {
@@ -175,7 +233,6 @@ export function CommunityPage({
     const next = post.downvotes + 1;
     setPosts(posts.map((p) => (p.id === postId ? { ...p, downvotes: next } : p)));
     updatePostField(postId, 'downvotes', next);
-    toast.success('Downvoted!');
   };
 
   const handleComment = (postId: string) => {
@@ -189,13 +246,18 @@ export function CommunityPage({
     const next = !post.bookmarked;
     setPosts(posts.map((p) => (p.id === postId ? { ...p, bookmarked: next } : p)));
     updatePostField(postId, 'bookmarked', next);
-    toast.success(next ? 'Added to bookmarks' : 'Removed from bookmarks');
   };
 
-  const handleNewPost = async (postData: Partial<Post>) => {
+  const handleNewPost = async (payload: TemplatePostPayload) => {
+    const template = normalizedTemplates.find((t) => t.id === payload.templateId);
     const { data: auth } = await supabase.auth.getUser();
     const email = userEmail || auth.user?.email || 'Anonymous';
     const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`;
+
+    const promptText = template?.prompt || payload.caption || '';
+    const body = payload.caption
+      ? `${payload.caption.trim()}\n\n${promptText}`.trim()
+      : promptText;
 
     const { data, error } = await supabase
       .from('community_posts')
@@ -203,10 +265,10 @@ export function CommunityPage({
         user_id: auth.user?.id || null,
         author: email,
         author_avatar: avatar,
-        title: postData.title || '',
-        description: postData.description || '',
-        image_url: postData.image || null,
-        category: postData.category || 'general',
+        title: payload.title,
+        description: body,
+        image_url: payload.imageUrl || null,
+        category: payload.category || 'other',
         upvotes: 0,
         downvotes: 0,
         bookmarked: false,
@@ -230,7 +292,7 @@ export function CommunityPage({
       createdAt: row.created_at,
       title: row.title,
       description: row.description,
-      image: row.image_url || undefined,
+      image: row.image_url || DEFAULT_PROMPT_IMAGE,
       upvotes: row.upvotes || 0,
       downvotes: row.downvotes || 0,
       comments: 0,
@@ -240,7 +302,8 @@ export function CommunityPage({
 
     setPosts((prev) => [nextPost, ...prev]);
     setShowNewPostModal(false);
-    toast.success('Post created successfully!');
+    setInitialTemplateId('');
+    toast.success('Posted to community');
   };
 
   const handleCommentsChanged = (postId: string, commentCount: number) => {
@@ -248,74 +311,113 @@ export function CommunityPage({
     setSelectedPost((prev) => (prev && prev.id === postId ? { ...prev, comments: commentCount } : prev));
   };
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <CommunityHeader onNewPost={() => setShowNewPostModal(true)} onNavigateHome={onNavigateHome || onBack} />
+  const handleDeletePost = async (postId: string) => {
+    const target = posts.find((post) => post.id === postId);
+    if (!target) return;
 
-      <div className="max-w-[1280px] mx-auto px-6 py-6">
+    const ok = window.confirm(`Delete "${target.title}"?`);
+    if (!ok) return;
+
+    const { error } = await supabase.from('community_posts').delete().eq('id', postId);
+    if (error) {
+      console.error('Delete post error:', error);
+      toast.error('Failed to delete post');
+      return;
+    }
+
+    setPosts((prev) => prev.filter((post) => post.id !== postId));
+    setSelectedPost((prev) => (prev?.id === postId ? null : prev));
+    toast.success('Post deleted');
+  };
+
+  return (
+    <div className="pit-community-page">
+      <div className="pit-bg-orb pit-bg-orb-a" />
+      <div className="pit-bg-orb pit-bg-orb-b" />
+
+      <CommunityHeader onNavigateHome={onNavigateHome || onBack} onOpenProfile={onOpenProfile} />
+
+      <div className="pit-community-shell">
         <CommunityTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
         {activeTab === 'community' ? (
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 mt-6 h-[calc(100vh-200px)]">
-            <div className="overflow-y-auto pr-2 custom-scrollbar">
-              <div className="mb-6 space-y-4 sticky top-0 bg-slate-950 z-10 pb-4">
-                <CommunitySearch value={searchQuery} onChange={setSearchQuery} />
-                <CommunityFilters
-                  sortFilter={sortFilter}
-                  categoryFilter={categoryFilter}
-                  onSortChange={setSortFilter}
-                  onCategoryChange={setCategoryFilter}
-                  onNewPost={() => setShowNewPostModal(true)}
-                />
-              </div>
-
-              <PostsFeed
-                posts={sortedPosts}
-                onUpvote={handleUpvote}
-                onDownvote={handleDownvote}
-                onComment={handleComment}
-                onBookmark={handleBookmark}
+          <>
+            <div className="pit-toolbar">
+              <CommunitySearch value={searchQuery} onChange={setSearchQuery} />
+              <CommunityFilters
+                sortFilter={sortFilter}
+                categoryFilter={categoryFilter}
+                onSortChange={setSortFilter}
+                onCategoryChange={setCategoryFilter}
+                onNewPost={() => setShowNewPostModal(true)}
               />
             </div>
 
-            <div className="overflow-y-auto custom-scrollbar">
-              <MySidebar templates={sidebarTemplates} />
+            <div className="pit-layout-grid">
+              <main>
+                <PostsFeed
+                  posts={visiblePosts}
+                  onUpvote={handleUpvote}
+                  onDownvote={handleDownvote}
+                  onComment={handleComment}
+                  onBookmark={handleBookmark}
+                  onOpenPost={setSelectedPost}
+                />
+                <div ref={sentinelRef} className="pit-load-sentinel">
+                  {visibleCount < sortedPosts.length ? 'Loading more posts...' : ''}
+                </div>
+              </main>
+
+              <MySidebar
+                posts={savedPosts}
+                onOpenPost={setSelectedPost}
+                onUnsavePost={handleBookmark}
+              />
             </div>
-          </div>
+          </>
         ) : (
-          <div className="mt-6 h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
-            <div className="bg-slate-900 border border-slate-700 rounded-lg p-8 text-center">
-              <h3 className="text-xl mb-2">My Templates</h3>
-              <p className="text-slate-400 mb-6">Your saved templates appear here from Studio.</p>
-              <div className="space-y-3">
-                {sidebarTemplates.length === 0 ? (
-                  <div className="bg-slate-950 border border-slate-700 rounded-lg p-4 text-slate-400">
-                    No saved templates found.
-                  </div>
-                ) : (
-                  sidebarTemplates.map((template) => (
-                    <div
-                      key={template.id}
-                      className="bg-slate-950 border border-slate-700 rounded-lg p-4 text-left hover:border-blue-400 transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-slate-800 rounded flex items-center justify-center text-sm">
-                          {template.icon}
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-sm font-medium text-white">{template.title}</h4>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
+          <section className="pit-saved-grid">
+            {myPosts.length === 0 ? (
+              <div className="pit-empty-card">
+                <h3>No posts yet</h3>
+                <p>Posts you publish to community will appear here.</p>
               </div>
-            </div>
-          </div>
+            ) : (
+              myPosts.map((post) => (
+                <article key={post.id} className="pit-saved-card">
+                  <h4>{post.title}</h4>
+                  <p className="pit-line-clamp-4">{post.description}</p>
+                  <div className="pit-saved-actions">
+                    <button className="pit-mini-btn" onClick={() => setSelectedPost(post)}>
+                      <Eye size={14} />
+                      <span>View</span>
+                    </button>
+                    <button
+                      className="pit-mini-btn"
+                      onClick={() => handleDeletePost(post.id)}
+                    >
+                      <Trash2 size={14} />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                </article>
+              ))
+            )}
+          </section>
         )}
       </div>
 
-      {showNewPostModal && <NewPostModal onClose={() => setShowNewPostModal(false)} onSubmit={handleNewPost} />}
+      {showNewPostModal && (
+        <NewPostModal
+          templates={normalizedTemplates}
+          initialTemplateId={initialTemplateId}
+          onClose={() => {
+            setShowNewPostModal(false);
+            setInitialTemplateId('');
+          }}
+          onSubmit={handleNewPost}
+        />
+      )}
 
       {selectedPost && (
         <PostDetailModal
@@ -328,3 +430,4 @@ export function CommunityPage({
     </div>
   );
 }
+

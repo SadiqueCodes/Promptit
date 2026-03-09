@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { ArrowUp, ArrowDown, MessageSquare, Bookmark } from 'lucide-react';
+import { ArrowUp, ArrowDown, MessageSquare, Bookmark, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { DEFAULT_PROMPT_IMAGE } from './constants';
 import type { Post } from './types';
 
 interface PostCardProps {
@@ -10,140 +11,86 @@ interface PostCardProps {
   onDownvote: (id: string) => void;
   onComment: (id: string) => void;
   onBookmark: (id: string) => void;
+  onOpenPost: (post: Post) => void;
 }
 
-export function PostCard({ post, onUpvote, onDownvote, onComment, onBookmark }: PostCardProps) {
-  const [userVoted, setUserVoted] = useState<'up' | 'down' | null>(null);
+export function PostCard({ post, onUpvote, onDownvote, onComment, onBookmark, onOpenPost }: PostCardProps) {
+  const [copied, setCopied] = useState(false);
 
-  const handleUpvote = () => {
-    if (userVoted !== 'up') {
-      onUpvote(post.id);
-      setUserVoted('up');
-    }
-  };
-
-  const handleDownvote = () => {
-    if (userVoted !== 'down') {
-      onDownvote(post.id);
-      setUserVoted('down');
-    }
-  };
-
-  const copyToClipboard = (text: string) => {
-    // Use fallback method to avoid permissions issues
+  const copyPrompt = () => {
     const textArea = document.createElement('textarea');
-    textArea.value = text;
+    textArea.value = post.description;
     textArea.style.position = 'fixed';
-    textArea.style.top = '0';
-    textArea.style.left = '0';
     textArea.style.opacity = '0';
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();
-    
     try {
-      const successful = document.execCommand('copy');
-      if (successful) {
-        toast.success("Prompt copied to clipboard!");
-      } else {
-        toast.error("Failed to copy");
+      const ok = document.execCommand('copy');
+      if (ok) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1400);
+        toast.success('Copied!');
       }
-    } catch (err) {
-      console.error('Copy failed:', err);
-      toast.error("Failed to copy");
     } finally {
       document.body.removeChild(textArea);
     }
   };
 
   return (
-    <div className="bg-slate-950 border border-slate-700 rounded-lg overflow-hidden hover:border-slate-400/50 transition-colors">
-      <div className="p-4">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-3">
-          <img
-            src={post.authorAvatar}
-            alt={post.author}
-            className="w-10 h-10 rounded-full bg-slate-800"
-          />
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-white">{post.author}</span>
-              <span className="text-xs text-slate-400">{post.timestamp}</span>
-            </div>
-          </div>
-          <button
-            onClick={() => copyToClipboard(post.description)}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs rounded-md transition-colors"
-          >
-            Copy Prompt
-          </button>
+    <article className="pit-post-card">
+      <header className="pit-post-header">
+        <img src={post.authorAvatar} alt={post.author} className="pit-avatar" />
+        <div>
+          <div className="pit-author">{post.author}</div>
+          <div className="pit-time">{post.timestamp}</div>
         </div>
+      </header>
 
-        {/* Content */}
-        <div className="grid grid-cols-[1fr_auto] gap-4">
-          <div>
-            <h3 className="text-lg font-semibold text-white mb-2">{post.title}</h3>
-            <p className="text-sm text-slate-400 leading-relaxed line-clamp-3">
-              {post.description}
-            </p>
-          </div>
-          {post.image && (
-            <div className="w-40 h-24 rounded-lg overflow-hidden flex-shrink-0">
-              <ImageWithFallback
-                src={post.image}
-                alt={post.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )}
-        </div>
+      <h3 className="pit-post-title">{post.title}</h3>
 
-        {/* Actions */}
-        <div className="flex items-center gap-4 mt-4 pt-3 border-t border-slate-800">
-          {/* Upvote/Downvote */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={handleUpvote}
-              className={`p-1.5 rounded hover:bg-slate-700 transition-colors ${
-                userVoted === 'up' ? 'text-blue-400' : 'text-slate-400'
-              }`}
-            >
-              <ArrowUp className="w-4 h-4" />
-            </button>
-            <span className="text-sm font-medium text-white min-w-[2rem] text-center">
-              {post.upvotes - post.downvotes}
-            </span>
-            <button
-              onClick={handleDownvote}
-              className={`p-1.5 rounded hover:bg-slate-700 transition-colors ${
-                userVoted === 'down' ? 'text-red-500' : 'text-slate-400'
-              }`}
-            >
-              <ArrowDown className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Comments */}
-          <button
-            onClick={() => onComment(post.id)}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-slate-700 transition-colors text-slate-400 hover:text-white"
-          >
-            <MessageSquare className="w-4 h-4" />
-            <span className="text-sm">{post.comments}</span>
-          </button>
-
-          {/* Bookmark */}
-          <button
-            onClick={() => onBookmark(post.id)}
-            className={`ml-auto p-1.5 rounded hover:bg-slate-700 transition-colors ${
-              post.bookmarked ? 'text-orange-300' : 'text-slate-400'
-            }`}
-          >
-            <Bookmark className={`w-4 h-4 ${post.bookmarked ? 'fill-current' : ''}`} />
+      <div className="pit-post-content-box">
+        <p className="pit-post-content pit-line-clamp-4">{post.description}</p>
+        <div className="pit-post-actions-top">
+          <button className="pit-link-btn" onClick={() => onOpenPost(post)}>View Full Prompt</button>
+          <button className="pit-mini-btn" onClick={copyPrompt}>
+            {copied ? <Check size={13} /> : <Copy size={13} />}
+            <span>{copied ? 'Copied!' : 'Copy Prompt'}</span>
           </button>
         </div>
       </div>
-    </div>
+
+      <div className="pit-image-wrap">
+        <div className="pit-image-stage">
+          <div
+            className="pit-image-blur-bg"
+            style={{ backgroundImage: `url(${post.image || DEFAULT_PROMPT_IMAGE})` }}
+          />
+          <ImageWithFallback
+            src={post.image || DEFAULT_PROMPT_IMAGE}
+            alt={post.title}
+            className="pit-post-image-contained"
+          />
+        </div>
+      </div>
+
+      <div className="pit-interaction-bar">
+        <button className="pit-vote-btn" onClick={() => onUpvote(post.id)}>
+          <ArrowUp size={16} />
+          <span>{post.upvotes}</span>
+        </button>
+        <button className="pit-vote-btn" onClick={() => onDownvote(post.id)}>
+          <ArrowDown size={16} />
+          <span>{post.downvotes}</span>
+        </button>
+        <button className="pit-vote-btn" onClick={() => onComment(post.id)}>
+          <MessageSquare size={16} />
+          <span>{post.comments}</span>
+        </button>
+        <button className="pit-bookmark-btn" onClick={() => onBookmark(post.id)}>
+          <Bookmark size={16} className={post.bookmarked ? 'pit-bookmarked' : ''} />
+        </button>
+      </div>
+    </article>
   );
 }

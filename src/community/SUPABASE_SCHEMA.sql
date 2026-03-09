@@ -54,6 +54,12 @@ create policy "community_posts_update_authenticated"
   using (auth.uid() is not null)
   with check (auth.uid() is not null);
 
+drop policy if exists "community_posts_delete_owner" on public.community_posts;
+create policy "community_posts_delete_owner"
+  on public.community_posts
+  for delete
+  using (auth.uid() = user_id);
+
 drop policy if exists "community_comments_select" on public.community_comments;
 create policy "community_comments_select"
   on public.community_comments

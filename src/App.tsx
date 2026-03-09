@@ -165,7 +165,7 @@ export default function App() {
   };
 
   const roleLabels: Record<string, string> = {
-    "software-developer": "Software Developer",
+    "software-developer": "Developer",
     "data-scientist": "Data Scientist",
     "teacher": "Teacher",
     "artist": "Artist",
@@ -516,11 +516,76 @@ export default function App() {
 
   if (currentView === "community") {
     return (
-      <CommunityPage
-        userEmail={userEmail}
-        templates={customTemplates}
-        onBack={() => setCurrentView("studio")}
-      />
+      <>
+        <CommunityPage
+          userEmail={userEmail}
+          templates={customTemplates}
+          onBack={() => setCurrentView("studio")}
+          onOpenProfile={() => setShowSettings(true)}
+        />
+
+        <AnimatePresence>
+          {showSettings && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/90 backdrop-blur-md"
+              onClick={() => setShowSettings(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl text-white flex items-center gap-2">
+                    <Settings className="w-5 h-5 text-purple-400" />
+                    Account Settings
+                  </h2>
+                  <Button
+                    onClick={() => setShowSettings(false)}
+                    variant="ghost"
+                    size="sm"
+                    className="text-slate-400 hover:text-white hover:bg-white/10 h-8 w-8 p-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                    <p className="text-sm text-slate-400 mb-1">Signed in as</p>
+                    <p className="text-white">{userEmail}</p>
+                  </div>
+
+                  {usageInfo && (
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                      <p className="text-sm text-slate-400 mb-2">Usage Stats</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-white font-medium">
+                          {usageInfo.transformationCount} transformations
+                        </span>
+                        <Sparkles className="w-4 h-4 text-purple-400" />
+                      </div>
+                    </div>
+                  )}
+
+                  <Button
+                    onClick={handleLogout}
+                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 w-full border border-red-500/20"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </>
     );
   }
 
@@ -673,11 +738,17 @@ export default function App() {
 
                   {/* Template Content */}
                   <div className="bg-black/20 border border-white/10 rounded-xl p-6 mb-6">
-                    <ScrollArea className="max-h-[300px]">
-                      <p className="text-white leading-relaxed whitespace-pre-wrap">
+                    <div
+                      className="thin-scrollbar"
+                      style={{ maxHeight: "300px", overflowY: "auto", paddingRight: "6px", scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.28) transparent" }}
+                    >
+                      <p
+                        className="text-white leading-relaxed whitespace-pre-wrap"
+                        style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+                      >
                         {selectedTemplate.template}
                       </p>
-                    </ScrollArea>
+                    </div>
                   </div>
 
                   {/* Action Buttons */}
@@ -754,21 +825,28 @@ export default function App() {
                           />
                         </button>
                         {isRoleMenuOpen && (
-                          <div className="absolute left-0 top-full mt-2 min-w-[180px] z-40 rounded-lg border border-white/10 bg-black/95 shadow-xl p-1">
-                            <button type="button" onClick={() => { setSelectedRole(""); setIsRoleMenuOpen(false); }} className="w-full text-left px-3 py-2 text-sm leading-5 rounded-md text-slate-300 hover:bg-white/10">Role</button>
-                            {Object.entries(roleLabels).map(([value, label]) => (
-                              <button
-                                key={value}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedRole(value);
-                                  setIsRoleMenuOpen(false);
-                                }}
-                                className="w-full text-left px-3 py-2 text-sm leading-5 rounded-md text-slate-300 hover:bg-white/10"
-                              >
-                                {label}
-                              </button>
-                            ))}
+                          <div
+                            className="absolute left-0 min-w-[150px] z-40 rounded-md border border-white/10 bg-black/95 shadow-xl p-1"
+                            style={{
+                              top: "calc(100% + 8px)",
+                            }}
+                          >
+                            <div className="thin-scrollbar" style={{ maxHeight: "160px", overflowY: "auto", scrollbarWidth: "thin" }}>
+                              <button type="button" onClick={() => { setSelectedRole(""); setIsRoleMenuOpen(false); }} className="w-full text-left px-2 py-1.5 text-xs leading-4 rounded text-slate-300 hover:bg-white/10">Role</button>
+                              {Object.entries(roleLabels).map(([value, label]) => (
+                                <button
+                                  key={value}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedRole(value);
+                                    setIsRoleMenuOpen(false);
+                                  }}
+                                  className="w-full text-left px-2 py-1.5 text-xs leading-4 rounded text-slate-300 hover:bg-white/10"
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -793,21 +871,28 @@ export default function App() {
                           />
                         </button>
                         {isMoodMenuOpen && (
-                          <div className="absolute left-0 top-full mt-2 min-w-[150px] z-40 rounded-lg border border-white/10 bg-black/95 shadow-xl p-1">
-                            <button type="button" onClick={() => { setSelectedMood(""); setIsMoodMenuOpen(false); }} className="w-full text-left px-3 py-2 text-sm leading-5 rounded-md text-slate-300 hover:bg-white/10">Mood</button>
-                            {Object.entries(moodLabels).map(([value, label]) => (
-                              <button
-                                key={value}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedMood(value);
-                                  setIsMoodMenuOpen(false);
-                                }}
-                                className="w-full text-left px-3 py-2 text-sm leading-5 rounded-md text-slate-300 hover:bg-white/10"
-                              >
-                                {label}
-                              </button>
-                            ))}
+                          <div
+                            className="absolute left-0 min-w-[130px] z-40 rounded-md border border-white/10 bg-black/95 shadow-xl p-1"
+                            style={{
+                              top: "calc(100% + 8px)",
+                            }}
+                          >
+                            <div className="thin-scrollbar" style={{ maxHeight: "160px", overflowY: "auto", scrollbarWidth: "thin" }}>
+                              <button type="button" onClick={() => { setSelectedMood(""); setIsMoodMenuOpen(false); }} className="w-full text-left px-2 py-1.5 text-xs leading-4 rounded text-slate-300 hover:bg-white/10">Mood</button>
+                              {Object.entries(moodLabels).map(([value, label]) => (
+                                <button
+                                  key={value}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedMood(value);
+                                    setIsMoodMenuOpen(false);
+                                  }}
+                                  className="w-full text-left px-2 py-1.5 text-xs leading-4 rounded text-slate-300 hover:bg-white/10"
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -867,14 +952,17 @@ export default function App() {
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-sm text-slate-400">Original Prompt</h3>
                     </div>
-                    <ScrollArea className="max-h-[400px] w-full">
+                    <div
+                      className="thin-scrollbar"
+                      style={{ maxHeight: "400px", overflowY: "auto", paddingRight: "6px", width: "100%", scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.28) transparent" }}
+                    >
                       <p
                         className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap w-full"
                         style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
                       >
                         {currentPair.original}
                       </p>
-                    </ScrollArea>
+                    </div>
                   </div>
                 </motion.div>
 
@@ -922,14 +1010,17 @@ export default function App() {
                         )}
                       </Button>
                     </div>
-                    <ScrollArea className="max-h-[400px] w-full">
+                    <div
+                      className="thin-scrollbar"
+                      style={{ maxHeight: "400px", overflowY: "auto", paddingRight: "6px", width: "100%", scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.28) transparent" }}
+                    >
                       <p
                         className="text-white text-sm leading-relaxed whitespace-pre-wrap w-full"
                         style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
                       >
                         {currentPair.enhanced}
                       </p>
-                    </ScrollArea>
+                    </div>
                   </div>
                 </motion.div>
               </div>
@@ -1051,7 +1142,7 @@ export default function App() {
                 className="relative bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl"
               >
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl flex items-center gap-2">
+                  <h2 className="text-xl text-white flex items-center gap-2">
                     <Settings className="w-5 h-5 text-purple-400" />
                     Account Settings
                   </h2>
