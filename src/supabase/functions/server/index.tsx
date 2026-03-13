@@ -18,9 +18,6 @@ app.use('*', cors({
 // Add logger
 app.use('*', logger(console.log));
 
-// Hardcoded Gemini API key (this is the free API provided by the developer)
-const GEMINI_API_KEY = "AIzaSyAbyxQu_ITEIOQIjw3IawrcJx57lYZAMTY";
-
 // Usage limits - unlimited for everyone
 const FREE_TRANSFORMATIONS = 999999;
 
@@ -299,7 +296,7 @@ app.delete("/make-server-2313fdc9/api-key", async (c) => {
   }
 });
 
-// Enhance prompt endpoint (NOW USING HARDCODED GEMINI API)
+// Enhance prompt endpoint (server-side Groq; key stays in Supabase secrets)
 app.post("/make-server-2313fdc9/enhance", async (c) => {
   console.log('=== Enhance Endpoint Called ===');
   
@@ -355,36 +352,58 @@ app.post("/make-server-2313fdc9/enhance", async (c) => {
       return c.json({ error: "Prompt is required" }, 400);
     }
 
-    const systemMessage = `You are a prompt enhancement expert. ${role ? `Role: ${role}.` : ''} ${mood ? `Mood: ${mood}.` : ''} Enhance the user's prompt to be more detailed, specific, and effective while maintaining their original intent.`;
+    const systemMessage = [
+      "You are an expert prompt engineer.",
+      "Rewrite and enhance the user prompt for better AI output.",
+      "Return only the final enhanced prompt text, no preface, no markdown.",
+      role ? `Role context: ${role}.` : "",
+      mood ? `Tone/style: ${mood}.` : "",
+    ].filter(Boolean).join("\n");
 
-    // Use hardcoded Gemini API
-    const modelName = 'gemini-1.5-flash-002';
-    
-    console.log('Google Gemini API call with hardcoded key');
-    
-    const llmResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`, {
+    const groqApiKey = Deno.env.get("GROQ_API_KEY");
+    if (!groqApiKey) {
+      return c.json({ error: "Server misconfigured: missing GROQ_API_KEY secret" }, 500);
+    }
+
+    const llmResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${groqApiKey}`,
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [{ text: `${systemMessage}\n\nUser prompt: ${prompt}` }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-        },
+        model: "openai/gpt-oss-120b",
+        messages: [
+          {
+            role: "system",
+            content: systemMessage,
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 1,
+        max_completion_tokens: 4096,
+        top_p: 1,
+        stream: false,
+        reasoning_effort: "medium",
       }),
     });
 
     if (!llmResponse.ok) {
-      const errorData = await llmResponse.json();
-      console.error('Google API error:', errorData);
-      throw new Error(errorData.error?.message || 'API request failed');
+      const errorText = await llmResponse.text();
+      console.error('Groq API error:', errorText);
+      throw new Error(errorText || 'Groq API request failed');
     }
 
     const data = await llmResponse.json();
-    const enhancedPrompt = data.candidates[0]?.content?.parts[0]?.text || '';
+    const enhancedPrompt = String(
+      data?.choices?.[0]?.message?.content ||
+      data?.choices?.[0]?.delta?.content ||
+      data?.choices?.[0]?.text ||
+      ""
+    ).trim();
 
     if (!enhancedPrompt) {
       console.error('Enhancement error: Empty response from LLM');

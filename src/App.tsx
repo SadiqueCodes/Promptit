@@ -241,6 +241,44 @@ export default function App() {
     }
   };
 
+  const callServerEnhance = async (
+    prompt: string,
+    role?: string,
+    mood?: string
+  ): Promise<{ enhancedPrompt: string; usageInfo?: any; requiresUpgrade?: boolean; message?: string }> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+    if (!accessToken) {
+      throw new Error("Not authenticated. Please sign in again.");
+    }
+
+    const response = await fetch(
+      `https://${projectId}.supabase.co/functions/v1/make-server-2313fdc9/enhance`,
+      {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${publicAnonKey}`,
+        "X-Supabase-Auth": accessToken,
+      },
+      body: JSON.stringify({
+        prompt,
+        role,
+        mood,
+      }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const serverMessage = payload?.error || payload?.message || response.statusText;
+      const err: any = new Error(serverMessage || "Enhancement failed");
+      if (payload?.requiresUpgrade) err.requiresUpgrade = true;
+      throw err;
+    }
+
+    return payload;
+  };
   // Load custom templates from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('promptit-custom-templates');
@@ -390,11 +428,6 @@ export default function App() {
     setCurrentPair(null);
 
     try {
-      const puter = (window as any).puter;
-      if (!puter?.ai?.chat) {
-        throw new Error('Puter SDK not loaded. Please refresh the page.');
-      }
-
       const roleContext = selectedRole && roleDescriptions[selectedRole]
         ? `Role context: ${roleDescriptions[selectedRole]}.`
         : '';
@@ -411,15 +444,8 @@ export default function App() {
         `User prompt:\n${inputPrompt.trim()}`,
       ].filter(Boolean).join('\n\n');
 
-      const aiResponse = await puter.ai.chat(enhancementPrompt, { model: 'gpt-5-nano' });
-
-      const enhancedText =
-        typeof aiResponse === 'string'
-          ? aiResponse
-          : aiResponse?.message?.content ||
-            aiResponse?.content ||
-            aiResponse?.text ||
-            '';
+      const enhanceResult = await callServerEnhance(enhancementPrompt, selectedRole, selectedMood);
+      const enhancedText = enhanceResult.enhancedPrompt;
 
       if (!enhancedText || !String(enhancedText).trim()) {
         throw new Error('Model returned an empty response');
@@ -438,44 +464,20 @@ export default function App() {
         saveHistoryEntryToDatabase(authUserId, newPair);
       }
 
-      // Persist transformation usage in backend for accurate cross-session count
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          const usageResp = await fetch(
-            `https://${projectId}.supabase.co/functions/v1/make-server-2313fdc9/usage/increment`,
-            {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${publicAnonKey}`,
-                "X-Supabase-Auth": session.access_token,
-              },
-            }
-          );
-
-          if (usageResp.ok) {
-            const usageData = await usageResp.json();
-            setUsageInfo((prev) => prev ? {
-              ...prev,
-              transformationCount: usageData.transformationCount ?? prev.transformationCount,
-            } : {
-              transformationCount: usageData.transformationCount ?? 0,
-              subscriptionStatus: "active",
-              subscriptionPlan: "unlimited",
-              freeLimit: usageData.freeLimit ?? 999999,
-              hasUnlimitedAccess: usageData.hasUnlimitedAccess ?? true,
-            });
-          } else {
-            // Fallback UI increment if backend usage update fails
-            setUsageInfo((prev) =>
-              prev
-                ? { ...prev, transformationCount: prev.transformationCount + 1 }
-                : prev
-            );
-          }
-        }
-      } catch (usageError) {
-        console.error("Usage increment error:", usageError);
+      if (enhanceResult.usageInfo) {
+        setUsageInfo((prev) => prev ? {
+          ...prev,
+          transformationCount: enhanceResult.usageInfo.used ?? prev.transformationCount,
+          freeLimit: enhanceResult.usageInfo.limit ?? prev.freeLimit,
+          hasUnlimitedAccess: enhanceResult.usageInfo.hasUnlimitedAccess ?? prev.hasUnlimitedAccess,
+        } : {
+          transformationCount: enhanceResult.usageInfo.used ?? 0,
+          subscriptionStatus: "active",
+          subscriptionPlan: "unlimited",
+          freeLimit: enhanceResult.usageInfo.limit ?? 999999,
+          hasUnlimitedAccess: enhanceResult.usageInfo.hasUnlimitedAccess ?? true,
+        });
+      } else {
         setUsageInfo((prev) =>
           prev
             ? { ...prev, transformationCount: prev.transformationCount + 1 }
@@ -486,6 +488,9 @@ export default function App() {
       toast.success('Prompt enhanced successfully!');
     } catch (error: any) {
       console.error('Enhancement error:', error);
+      if (error?.requiresUpgrade) {
+        setShowPricing(true);
+      }
       toast.error(error.message || 'Failed to enhance prompt');
     } finally {
       setIsEnhancing(false);
@@ -1799,16 +1804,17 @@ export default function App() {
                       value={newTemplateIcon}
                       onChange={(e) => setNewTemplateIcon(e.target.value)}
                       className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500/50 transition-all"
+                      style={{ colorScheme: "dark" }}
                     >
-                      <option value="Sparkles">✨ Sparkles</option>
-                      <option value="Mail">📧 Mail</option>
-                      <option value="FileText">📄 File Text</option>
-                      <option value="MessageSquare">💬 Message</option>
-                      <option value="Code">💻 Code</option>
-                      <option value="Briefcase">💼 Briefcase</option>
-                      <option value="GraduationCap">🎓 Education</option>
-                      <option value="Wand2">🪄 Wand</option>
-                      <option value="History">🕐 History</option>
+                      <option value="Sparkles" style={{ backgroundColor: "#0b1020", color: "#f8fafc" }}>Sparkles</option>
+                      <option value="Mail" style={{ backgroundColor: "#0b1020", color: "#f8fafc" }}>Mail</option>
+                      <option value="FileText" style={{ backgroundColor: "#0b1020", color: "#f8fafc" }}>File Text</option>
+                      <option value="MessageSquare" style={{ backgroundColor: "#0b1020", color: "#f8fafc" }}>Message</option>
+                      <option value="Code" style={{ backgroundColor: "#0b1020", color: "#f8fafc" }}>Code</option>
+                      <option value="Briefcase" style={{ backgroundColor: "#0b1020", color: "#f8fafc" }}>Briefcase</option>
+                      <option value="GraduationCap" style={{ backgroundColor: "#0b1020", color: "#f8fafc" }}>Education</option>
+                      <option value="Wand2" style={{ backgroundColor: "#0b1020", color: "#f8fafc" }}>Wand</option>
+                      <option value="History" style={{ backgroundColor: "#0b1020", color: "#f8fafc" }}>History</option>
                     </select>
                   </div>
 
