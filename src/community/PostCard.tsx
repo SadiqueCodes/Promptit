@@ -13,12 +13,21 @@ interface PostCardProps {
   onOpenPost: (post: Post) => void;
 }
 
+function cleanPromptText(value: string): string {
+  return value
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*tags:\s*/i.test(line))
+    .join('\n')
+    .trim();
+}
+
 export function PostCard({ post, onUpvote, onDownvote, onComment, onBookmark, onOpenPost }: PostCardProps) {
   const [copied, setCopied] = useState(false);
+  const safeDescription = cleanPromptText(post.description);
 
   const copyPrompt = () => {
     const textArea = document.createElement('textarea');
-    textArea.value = post.description;
+    textArea.value = safeDescription;
     textArea.style.position = 'fixed';
     textArea.style.opacity = '0';
     document.body.appendChild(textArea);
@@ -49,7 +58,7 @@ export function PostCard({ post, onUpvote, onDownvote, onComment, onBookmark, on
       <h3 className="pit-post-title">{post.title}</h3>
 
       <div className="pit-post-content-box">
-        <p className="pit-post-content pit-line-clamp-4">{post.description}</p>
+        <p className="pit-post-content pit-line-clamp-4">{safeDescription}</p>
         <div className="pit-post-actions-top">
           <button className="pit-link-btn" onClick={() => onOpenPost(post)}>View Full Prompt</button>
           <button className="pit-mini-btn" onClick={copyPrompt}>

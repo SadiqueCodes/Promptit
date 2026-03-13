@@ -35,6 +35,7 @@ interface PromptHistoryRow {
 
 export default function App() {
   const USERNAME_STORAGE_KEY = "promptit-display-name";
+  const getUsernameStorageKey = (userId: string) => `${USERNAME_STORAGE_KEY}:${userId}`;
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
@@ -82,9 +83,9 @@ export default function App() {
 
   // Check authentication status on mount
   useEffect(() => {
-    const deriveName = (email: string | null, metadataName: string | null) => {
+    const deriveName = (userId: string | null, email: string | null, metadataName: string | null) => {
       if (metadataName && metadataName.trim()) return metadataName.trim();
-      const local = localStorage.getItem(USERNAME_STORAGE_KEY);
+      const local = userId ? localStorage.getItem(getUsernameStorageKey(userId)) : null;
       if (local && local.trim()) return local.trim();
       if (email && email.includes("@")) return email.split("@")[0];
       return "User";
@@ -98,11 +99,11 @@ export default function App() {
           setAuthUserId(session.user.id);
           const email = session.user.email || null;
           const metadataName = (session.user.user_metadata?.display_name as string | undefined) || null;
-          const resolvedName = deriveName(email, metadataName);
+          const resolvedName = deriveName(session.user.id, email, metadataName);
           setUserEmail(email);
           setDisplayName(resolvedName);
           setUsernameInput(resolvedName);
-          localStorage.setItem(USERNAME_STORAGE_KEY, resolvedName);
+          localStorage.setItem(getUsernameStorageKey(session.user.id), resolvedName);
           // Load usage info
           await loadUsageInfo(session.access_token);
         }
@@ -121,12 +122,12 @@ export default function App() {
       setAuthUserId(session?.user.id || null);
       const email = session?.user.email || null;
       const metadataName = (session?.user.user_metadata?.display_name as string | undefined) || null;
-      const resolvedName = session ? deriveName(email, metadataName) : "";
+      const resolvedName = session ? deriveName(session.user.id, email, metadataName) : "";
       setUserEmail(email);
       setDisplayName(resolvedName);
       setUsernameInput(resolvedName);
       if (session) {
-        localStorage.setItem(USERNAME_STORAGE_KEY, resolvedName);
+        localStorage.setItem(getUsernameStorageKey(session.user.id), resolvedName);
       }
       if (session) {
         await loadUsageInfo(session.access_token);
@@ -544,7 +545,9 @@ export default function App() {
       }
 
       setDisplayName(trimmed);
-      localStorage.setItem(USERNAME_STORAGE_KEY, trimmed);
+      if (authUserId) {
+        localStorage.setItem(getUsernameStorageKey(authUserId), trimmed);
+      }
       toast.success("Username updated");
     } catch (error) {
       console.error("Username update exception:", error);

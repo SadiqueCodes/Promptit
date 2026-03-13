@@ -7,6 +7,14 @@ interface MySidebarProps {
   onUnsavePost: (postId: string) => void;
 }
 
+function cleanPromptText(value: string): string {
+  return value
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*tags:\s*/i.test(line))
+    .join('\n')
+    .trim();
+}
+
 export function MySidebar({ posts, onOpenPost, onUnsavePost }: MySidebarProps) {
   return (
     <aside className="pit-sidebar-card">
@@ -19,7 +27,7 @@ export function MySidebar({ posts, onOpenPost, onUnsavePost }: MySidebarProps) {
           {posts.map((post) => (
             <div key={post.id} className="pit-sidebar-item">
               <div className="pit-sidebar-item-title">{post.title}</div>
-              <p className="pit-muted pit-line-clamp-4">{post.description}</p>
+              <p className="pit-muted pit-line-clamp-4">{cleanPromptText(post.description)}</p>
               <div className="pit-sidebar-item-actions">
                 <button className="pit-mini-btn" onClick={() => onOpenPost(post)}>
                   <Eye size={13} />

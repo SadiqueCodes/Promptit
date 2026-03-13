@@ -770,6 +770,12 @@
   color: #9ba3af;
   font-size: 11px;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  transform: translateY(-1px);
 }
 
 .pit-modal-footer {

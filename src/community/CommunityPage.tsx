@@ -107,6 +107,14 @@ function extractTagsFromDescription(description: string): string[] {
   );
 }
 
+function stripTagsLineFromDescription(description: string): string {
+  return description
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*tags:\s*/i.test(line))
+    .join('\n')
+    .trim();
+}
+
 export function CommunityPage({
   onNavigateHome,
   onBack,
@@ -227,7 +235,7 @@ export function CommunityPage({
       timestamp: timeAgo(row.created_at),
       createdAt: row.created_at,
       title: row.title,
-      description: row.description,
+      description: stripTagsLineFromDescription(row.description),
       tags: extractTagsFromDescription(row.description),
       image: row.image_url || undefined,
       upvotes: upvoteCounts.has(row.id) ? (upvoteCounts.get(row.id) || 0) : (row.upvotes || 0),
@@ -504,7 +512,7 @@ export function CommunityPage({
       timestamp: timeAgo(row.created_at),
       createdAt: row.created_at,
       title: row.title,
-      description: row.description,
+      description: stripTagsLineFromDescription(row.description),
       tags: normalizedTags,
       image: row.image_url || undefined,
       upvotes: row.upvotes || 0,
@@ -608,7 +616,7 @@ export function CommunityPage({
               myPosts.map((post) => (
                 <article key={post.id} className="pit-saved-card">
                   <h4>{post.title}</h4>
-                  <p className="pit-line-clamp-4">{post.description}</p>
+                  <p className="pit-line-clamp-4">{stripTagsLineFromDescription(post.description)}</p>
                   <div className="pit-saved-actions">
                     <button className="pit-mini-btn" onClick={() => setSelectedPost(post)}>
                       <Eye size={14} />

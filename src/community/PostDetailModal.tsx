@@ -29,6 +29,14 @@ interface CommentNode extends Comment {
 
 const MAX_DEPTH = 5;
 
+function cleanPromptText(value: string): string {
+  return value
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*tags:\s*/i.test(line))
+    .join('\n')
+    .trim();
+}
+
 function timeAgo(isoTime: string): string {
   const diffMs = Date.now() - new Date(isoTime).getTime();
   const diffMinutes = Math.max(1, Math.floor(diffMs / (1000 * 60)));
@@ -85,6 +93,7 @@ export function PostDetailModal({ post, userEmail = null, userName = null, onCom
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [openReplyForms, setOpenReplyForms] = useState<Record<string, boolean>>({});
+  const safeDescription = cleanPromptText(post.description);
 
   const tree = useMemo(() => buildTree(comments), [comments]);
   const commentCount = useMemo(() => countNodes(tree), [tree]);
@@ -157,7 +166,7 @@ export function PostDetailModal({ post, userEmail = null, userName = null, onCom
 
   const copyPrompt = () => {
     const textArea = document.createElement('textarea');
-    textArea.value = post.description;
+    textArea.value = safeDescription;
     textArea.style.position = 'fixed';
     textArea.style.opacity = '0';
     document.body.appendChild(textArea);
@@ -228,7 +237,7 @@ export function PostDetailModal({ post, userEmail = null, userName = null, onCom
                 />
               </div>
             )}
-            <p className="pit-full-prompt">{post.description}</p>
+            <p className="pit-full-prompt">{safeDescription}</p>
             <button className="pit-mini-btn pit-mini-btn-accent" onClick={copyPrompt}>
               {copied ? <Check size={14} /> : <Copy size={14} />}
               <span>{copied ? 'Copied!' : 'Copy Prompt'}</span>
