@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { ArrowUp, ArrowDown, MessageSquare, Bookmark, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { DEFAULT_PROMPT_IMAGE } from './constants';
 import type { Post } from './types';
 
 interface PostCardProps {
@@ -60,19 +59,21 @@ export function PostCard({ post, onUpvote, onDownvote, onComment, onBookmark, on
         </div>
       </div>
 
-      <div className="pit-image-wrap">
-        <div className="pit-image-stage">
-          <div
-            className="pit-image-blur-bg"
-            style={{ backgroundImage: `url(${post.image || DEFAULT_PROMPT_IMAGE})` }}
-          />
-          <ImageWithFallback
-            src={post.image || DEFAULT_PROMPT_IMAGE}
-            alt={post.title}
-            className="pit-post-image-contained"
-          />
+      {post.image && (
+        <div className="pit-image-wrap">
+          <div className="pit-image-stage">
+            <div
+              className="pit-image-blur-bg"
+              style={{ backgroundImage: `url(${post.image})` }}
+            />
+            <ImageWithFallback
+              src={post.image}
+              alt={post.title}
+              className="pit-post-image-contained"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="pit-interaction-bar">
         <button className={`pit-vote-btn ${post.userVote === 'up' ? 'pit-vote-active' : ''}`} onClick={() => onUpvote(post.id)}>

@@ -9,7 +9,6 @@ import { PostsFeed } from './PostsFeed';
 import { MySidebar } from './MySidebar';
 import { NewPostModal } from './NewPostModal';
 import { PostDetailModal } from './PostDetailModal';
-import { DEFAULT_PROMPT_IMAGE } from './constants';
 import { supabase } from '../utils/supabase/client';
 import type { Post, Template, TemplatePostPayload } from './types';
 import './community.css';
@@ -84,6 +83,28 @@ function mapIcon(iconName?: string): string {
     History: '??',
   };
   return byName[iconName] || '?';
+}
+
+function deriveCategoryFromTags(tags: string[]): string {
+  const set = new Set(tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean));
+  if (set.has('writing')) return 'writing';
+  if (set.has('coding') || set.has('code') || set.has('dev')) return 'coding';
+  if (set.has('marketing') || set.has('seo') || set.has('ads')) return 'marketing';
+  if (set.has('ai-tools') || set.has('ai') || set.has('llm') || set.has('prompt')) return 'ai-tools';
+  return 'other';
+}
+
+function extractTagsFromDescription(description: string): string[] {
+  const lines = description.split('\n').map((line) => line.trim());
+  const tagLine = [...lines].reverse().find((line) => /^tags:/i.test(line));
+  if (!tagLine) return [];
+  return Array.from(
+    new Set(
+      (tagLine.match(/#([a-z0-9-]+)/gi) || [])
+        .map((value) => value.slice(1).toLowerCase())
+        .filter(Boolean),
+    ),
+  );
 }
 
 export function CommunityPage({
@@ -207,6 +228,7 @@ export function CommunityPage({
       createdAt: row.created_at,
       title: row.title,
       description: row.description,
+      tags: extractTagsFromDescription(row.description),
       image: row.image_url || undefined,
       upvotes: upvoteCounts.has(row.id) ? (upvoteCounts.get(row.id) || 0) : (row.upvotes || 0),
       downvotes: downvoteCounts.has(row.id) ? (downvoteCounts.get(row.id) || 0) : (row.downvotes || 0),
@@ -241,11 +263,13 @@ export function CommunityPage({
   const filteredPosts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return posts.filter((post) => {
+      const tagsText = (post.tags || []).join(' ');
       const matchesSearch =
         !q ||
         post.title.toLowerCase().includes(q) ||
         post.description.toLowerCase().includes(q) ||
-        post.author.toLowerCase().includes(q);
+        post.author.toLowerCase().includes(q) ||
+        tagsText.includes(q);
       const matchesCategory = categoryFilter === 'all' || post.category === categoryFilter;
       return matchesSearch && matchesCategory;
     });
@@ -435,10 +459,18 @@ export function CommunityPage({
       'Anonymous';
     const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(resolvedName)}`;
 
-    const promptText = template?.prompt || payload.caption || '';
+    const promptText = template?.prompt || payload.customPrompt || payload.caption || '';
+    const normalizedTags = (payload.tags || [])
+      .map((tag) => tag.trim().toLowerCase())
+      .filter(Boolean);
+    const tagsLine = normalizedTags.length > 0
+      ? `Tags: ${normalizedTags.map((tag) => `#${tag}`).join(' ')}`
+      : '';
     const body = payload.caption
-      ? `${payload.caption.trim()}\n\n${promptText}`.trim()
-      : promptText;
+      ? [payload.caption.trim(), promptText, tagsLine].filter(Boolean).join('\n\n').trim()
+      : [promptText, tagsLine].filter(Boolean).join('\n\n').trim();
+
+    const categoryFromTag = deriveCategoryFromTags(normalizedTags);
 
     const { data, error } = await supabase
       .from('community_posts')
@@ -449,7 +481,7 @@ export function CommunityPage({
         title: payload.title,
         description: body,
         image_url: payload.imageUrl || null,
-        category: payload.category || 'other',
+        category: categoryFromTag,
         upvotes: 0,
         downvotes: 0,
         bookmarked: false,
@@ -473,7 +505,8 @@ export function CommunityPage({
       createdAt: row.created_at,
       title: row.title,
       description: row.description,
-      image: row.image_url || DEFAULT_PROMPT_IMAGE,
+      tags: normalizedTags,
+      image: row.image_url || undefined,
       upvotes: row.upvotes || 0,
       downvotes: row.downvotes || 0,
       comments: 0,

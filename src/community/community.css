@@ -617,6 +617,10 @@
 
 .pit-modal-card-post {
   max-width: 760px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .pit-modal-card-compact {
@@ -697,6 +701,26 @@
   gap: 12px;
 }
 
+.pit-modal-card-post .pit-form-grid {
+  flex: 1;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.26) transparent;
+}
+
+.pit-modal-card-post .pit-form-grid::-webkit-scrollbar {
+  width: 2px;
+}
+
+.pit-modal-card-post .pit-form-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pit-modal-card-post .pit-form-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.26);
+  border-radius: 999px;
+}
+
 .pit-form-label {
   display: grid;
   gap: 6px;
@@ -720,6 +744,32 @@
 
 .pit-upload-btn {
   width: fit-content;
+}
+
+.pit-tags-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pit-tag-chip {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d8dde6;
+  border-radius: 999px;
+  padding: 5px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.pit-tag-remove {
+  color: #9ba3af;
+  font-size: 11px;
+  line-height: 1;
 }
 
 .pit-modal-footer {
@@ -856,6 +906,7 @@
   .pit-modal-card-full {
     width: 100%;
     max-width: 100%;
+    max-height: 94vh;
     border-radius: 12px;
   }
 

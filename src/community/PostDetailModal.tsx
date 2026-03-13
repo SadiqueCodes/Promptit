@@ -3,7 +3,6 @@ import { X, Copy, Check, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { supabase } from '../utils/supabase/client';
-import { DEFAULT_PROMPT_IMAGE } from './constants';
 import type { Post, Comment } from './types';
 
 interface PostDetailModalProps {
@@ -216,17 +215,19 @@ export function PostDetailModal({ post, userEmail = null, userName = null, onCom
 
         <div className="pit-modal-scroll thin-scrollbar">
           <div className="pit-post-content-box">
-            <div className="pit-image-stage">
-              <div
-                className="pit-image-blur-bg"
-                style={{ backgroundImage: `url(${post.image || DEFAULT_PROMPT_IMAGE})` }}
-              />
-              <ImageWithFallback
-                src={post.image || DEFAULT_PROMPT_IMAGE}
-                alt={post.title}
-                className="pit-post-image-contained"
-              />
-            </div>
+            {post.image && (
+              <div className="pit-image-stage">
+                <div
+                  className="pit-image-blur-bg"
+                  style={{ backgroundImage: `url(${post.image})` }}
+                />
+                <ImageWithFallback
+                  src={post.image}
+                  alt={post.title}
+                  className="pit-post-image-contained"
+                />
+              </div>
+            )}
             <p className="pit-full-prompt">{post.description}</p>
             <button className="pit-mini-btn pit-mini-btn-accent" onClick={copyPrompt}>
               {copied ? <Check size={14} /> : <Copy size={14} />}

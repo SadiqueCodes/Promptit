@@ -7,6 +7,7 @@ export interface Post {
   createdAt?: string;
   title: string;
   description: string;
+  tags?: string[];
   image?: string;
   upvotes: number;
   downvotes: number;
@@ -39,6 +40,7 @@ export interface TemplatePostPayload {
   title: string;
   caption: string;
   templateId: string;
-  category: string;
+  customPrompt?: string;
+  tags?: string[];
   imageUrl?: string;
 }
